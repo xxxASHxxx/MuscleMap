@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public class DatabaseHelper {
-    private static DatabaseHelper instance;  // FIXED: Moved inside class
+    private static DatabaseHelper instance;
     private static final String DB_URL = "jdbc:sqlite:musclemap.db";
     private Connection connection;
 
@@ -35,28 +35,8 @@ public class DatabaseHelper {
         }
         return instance;
     }
-    public List<Workout> getWorkoutsByUserId(int userId) {
-        List<Workout> workouts = new ArrayList<>();
-        try {
-            String sql = "SELECT * FROM workouts WHERE userid = ? ORDER BY starttime DESC";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setInt(1, userId);
-            ResultSet rs = pstmt.executeQuery();
 
-            while (rs.next()) {
-                Workout workout = buildWorkoutFromResultSet(rs);
-                workouts.add(workout);
-            }
-
-            rs.close();
-            pstmt.close();
-            System.out.println("Loaded " + workouts.size() + " workouts for user " + userId);
-        } catch (SQLException e) {
-            System.err.println("Failed to load user workouts: " + e.getMessage());
-        }
-        return workouts;
-    }
-
+    // ==================== USER AUTHENTICATION ====================
 
     public User authenticateUser(String username, String password) {
         try {
@@ -233,29 +213,7 @@ public class DatabaseHelper {
         return null;
     }
 
-    public List<Workout> getWorkoutsByUser(int userId) {
-        List<Workout> workouts = new ArrayList<>();
-        try {
-            String sql = "SELECT * FROM workouts WHERE user_id = ? ORDER BY start_time DESC";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setInt(1, userId);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                Workout workout = buildWorkoutFromResultSet(rs);
-                workouts.add(workout);
-            }
-
-            rs.close();
-            pstmt.close();
-            System.out.println("📊 Loaded " + workouts.size() + " workouts for user ID: " + userId);
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to load user workouts: " + e.getMessage());
-        }
-        return workouts;
-    }
+    // ==================== DATABASE INITIALIZATION ====================
 
     private void initializeDatabase() {
         try {
@@ -298,6 +256,7 @@ public class DatabaseHelper {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             workout_id INTEGER NOT NULL,
             exercise_name TEXT NOT NULL,
+            muscle_group TEXT,
             reps INTEGER NOT NULL,
             weight REAL NOT NULL,
             set_type TEXT DEFAULT 'NORMAL',
@@ -360,16 +319,14 @@ public class DatabaseHelper {
         }
     }
 
-    // ==================== CREATE OPERATIONS ====================
+    // ==================== WORKOUT OPERATIONS ====================
 
-    // FIXED: Added userId parameter
     public int saveWorkout(Workout workout, int userId) {
         int workoutId = -1;
         try {
             String sql = "INSERT INTO workouts (user_id, name, start_time, end_time, total_volume, notes) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 
-            // FIXED: Corrected parameter order and removed duplicates
             pstmt.setInt(1, userId);
             pstmt.setString(2, workout.getName());
             pstmt.setTimestamp(3, Timestamp.valueOf(workout.getStartTime()));
@@ -383,59 +340,160 @@ public class DatabaseHelper {
             if (generatedKeys.next()) {
                 workoutId = generatedKeys.getInt(1);
                 saveSets(workoutId, workout.getSets());
+                System.out.println("✅ Workout saved! ID: " + workoutId + " | Sets: " + workout.getSets().size() + " | Volume: " + workout.getTotalVolume());
             }
 
             generatedKeys.close();
             pstmt.close();
-            System.out.println("✅ Workout saved to database! ID: " + workoutId);
 
         } catch (SQLException e) {
             System.err.println("❌ Failed to save workout: " + e.getMessage());
+            e.printStackTrace();
         }
         return workoutId;
     }
 
     private void saveSets(int workoutId, List<WorkoutSet> sets) {
         try {
-            String sql = "INSERT INTO workout_sets (workout_id, exercise_name, reps, weight, set_type, completed) VALUES (?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO workout_sets (workout_id, exercise_name, muscle_group, reps, weight, set_type, completed) VALUES (?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(sql);
 
             for (WorkoutSet set : sets) {
                 pstmt.setInt(1, workoutId);
                 pstmt.setString(2, set.getExercise().getName());
-                pstmt.setInt(3, set.getReps());
-                pstmt.setDouble(4, set.getWeight());
-                pstmt.setString(5, set.getType().toString());
-                pstmt.setBoolean(6, set.isCompleted());
+                pstmt.setString(3, set.getExercise().getMuscleGroup());
+                pstmt.setInt(4, set.getReps());
+                pstmt.setDouble(5, set.getWeight());
+                pstmt.setString(6, set.getType().toString());
+                pstmt.setBoolean(7, set.isCompleted());
                 pstmt.executeUpdate();
             }
             pstmt.close();
+            System.out.println("✅ Saved " + sets.size() + " sets for workout " + workoutId);
         } catch (SQLException e) {
             System.err.println("❌ Failed to save sets: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+    // Method 1: Compatibility alias
+    public List<Workout> getWorkoutsByUser(int userId) {
+        return getWorkoutsByUserId(userId);
+    }
 
-    public void addExercise(Exercise exercise) {
+    // Method 2: Main implementation
+    public List<Workout> getWorkoutsByUserId(int userId) {
+        List<Workout> workouts = new ArrayList<>();
         try {
-            String sql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions) VALUES (?, ?, ?, ?, ?)";
+            String sql = "SELECT * FROM workouts WHERE user_id = ? ORDER BY start_time DESC";
             PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
 
-            pstmt.setString(1, exercise.getName());
-            pstmt.setString(2, exercise.getMuscleGroup());
-            pstmt.setString(3, exercise.getEquipment());
-            pstmt.setString(4, exercise.getDifficulty());
-            pstmt.setString(5, exercise.getInstructions());
+            while (rs.next()) {
+                Workout workout = buildWorkoutFromResultSet(rs);
+                workouts.add(workout);
+            }
 
-            pstmt.executeUpdate();
+            rs.close();
             pstmt.close();
-            System.out.println("✅ Exercise added: " + exercise.getName());
-
+            System.out.println("✅ Loaded " + workouts.size() + " workouts for user " + userId);
         } catch (SQLException e) {
-            System.err.println("❌ Failed to add exercise: " + e.getMessage());
+            System.err.println("❌ Failed to load user workouts: " + e.getMessage());
+            e.printStackTrace();
         }
+
+        return workouts;
     }
 
-    // ==================== READ OPERATIONS ====================
+    public Map<String, Double> getPersonalRecords(int userId) {
+        Map<String, Double> prs = new HashMap<>();
+        try {
+            String sql = """
+            SELECT ws.exercise_name, MAX(ws.weight) as max_weight
+            FROM workout_sets ws
+            JOIN workouts w ON ws.workout_id = w.id
+            WHERE w.user_id = ?
+            GROUP BY ws.exercise_name
+            ORDER BY max_weight DESC
+            """;
+
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                prs.put(rs.getString("exercise_name"), rs.getDouble("max_weight"));
+            }
+
+            rs.close();
+            pstmt.close();
+        } catch (SQLException e) {
+            System.err.println("Failed to load PRs: " + e.getMessage());
+        }
+        return prs;
+    }
+
+    private Workout buildWorkoutFromResultSet(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
+        String name = rs.getString("name");
+        LocalDateTime startTime = rs.getTimestamp("start_time").toLocalDateTime();
+        Timestamp endTimestamp = rs.getTimestamp("end_time");
+        LocalDateTime endTime = endTimestamp != null ? endTimestamp.toLocalDateTime() : null;
+        double totalVolume = rs.getDouble("total_volume");
+        String notes = rs.getString("notes");
+
+        Workout workout = new Workout(name);
+        workout.setId(id);
+        workout.setStartTime(startTime);
+        workout.setEndTime(endTime);
+        workout.setTotalVolume(totalVolume);
+        workout.setNotes(notes);
+
+        // CRITICAL: Load the sets for this workout
+        List<WorkoutSet> sets = getSetsForWorkout(id);
+        workout.setSets(sets);
+
+        return workout;
+    }
+
+    private List<WorkoutSet> getSetsForWorkout(int workoutId) {
+        List<WorkoutSet> sets = new ArrayList<>();
+        try {
+            String sql = "SELECT * FROM workout_sets WHERE workout_id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, workoutId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                String exerciseName = rs.getString("exercise_name");
+                String muscleGroup = rs.getString("muscle_group");
+                Exercise exercise = getExerciseByName(exerciseName);
+
+                if (exercise == null) {
+                    exercise = new Exercise(exerciseName, muscleGroup != null ? muscleGroup : "Unknown", "Unknown", "Intermediate", "");
+                }
+
+                WorkoutSet set = new WorkoutSet(
+                        exercise,
+                        rs.getInt("reps"),
+                        rs.getDouble("weight")
+                );
+
+                set.setId(rs.getInt("id"));
+                set.setCompleted(rs.getBoolean("completed"));
+                sets.add(set);
+            }
+
+            rs.close();
+            pstmt.close();
+            System.out.println("✅ Loaded " + sets.size() + " sets for workout " + workoutId);
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to load sets: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return sets;
+    }
 
     public List<Workout> getAllWorkouts() {
         List<Workout> workouts = new ArrayList<>();
@@ -455,26 +513,6 @@ public class DatabaseHelper {
             System.err.println("❌ Failed to load workouts: " + e.getMessage());
         }
         return workouts;
-    }
-
-    public Workout getWorkoutById(int workoutId) {
-        Workout workout = null;
-        try {
-            String sql = "SELECT * FROM workouts WHERE id = ?";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setInt(1, workoutId);
-
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                workout = buildWorkoutFromResultSet(rs);
-            }
-
-            rs.close();
-            pstmt.close();
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to load workout: " + e.getMessage());
-        }
-        return workout;
     }
 
     public List<Workout> getWorkoutsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
@@ -503,42 +541,26 @@ public class DatabaseHelper {
         return workouts;
     }
 
-    public Map<String, List<WorkoutSet>> getExerciseHistory(String exerciseName) {
-        Map<String, List<WorkoutSet>> history = new HashMap<>();
+    // ==================== EXERCISE OPERATIONS ====================
+
+    public void addExercise(Exercise exercise) {
         try {
-            String sql = """
-                SELECT ws.*, w.start_time, w.name as workout_name
-                FROM workout_sets ws
-                JOIN workouts w ON ws.workout_id = w.id
-                WHERE ws.exercise_name = ?
-                ORDER BY w.start_time DESC
-                """;
-
+            String sql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setString(1, exerciseName);
 
-            ResultSet rs = pstmt.executeQuery();
+            pstmt.setString(1, exercise.getName());
+            pstmt.setString(2, exercise.getMuscleGroup());
+            pstmt.setString(3, exercise.getEquipment());
+            pstmt.setString(4, exercise.getDifficulty());
+            pstmt.setString(5, exercise.getInstructions());
 
-            while (rs.next()) {
-                String workoutDate = rs.getTimestamp("start_time").toString();
-                Exercise exercise = getExerciseByName(exerciseName);
-
-                if (exercise != null) {
-                    WorkoutSet set = new WorkoutSet(exercise, rs.getInt("reps"), rs.getDouble("weight"));
-                    set.setCompleted(rs.getBoolean("completed"));
-
-                    history.computeIfAbsent(workoutDate, k -> new ArrayList<>()).add(set);
-                }
-            }
-
-            rs.close();
+            pstmt.executeUpdate();
             pstmt.close();
-            System.out.println("📜 Loaded history for " + exerciseName + ": " + history.size() + " sessions");
+            System.out.println("✅ Exercise added: " + exercise.getName());
 
         } catch (SQLException e) {
-            System.err.println("❌ Failed to load exercise history: " + e.getMessage());
+            System.err.println("❌ Failed to add exercise: " + e.getMessage());
         }
-        return history;
     }
 
     public List<Exercise> getAllExercises() {
@@ -624,49 +646,43 @@ public class DatabaseHelper {
         return exercises;
     }
 
-    private List<WorkoutSet> getSetsForWorkout(int workoutId) {
-        List<WorkoutSet> sets = new ArrayList<>();
+    public Map<String, List<WorkoutSet>> getExerciseHistory(String exerciseName) {
+        Map<String, List<WorkoutSet>> history = new HashMap<>();
         try {
-            String sql = "SELECT * FROM workoutsets WHERE workoutid = ?";
+            String sql = """
+                SELECT ws.*, w.start_time, w.name as workout_name
+                FROM workout_sets ws
+                JOIN workouts w ON ws.workout_id = w.id
+                WHERE ws.exercise_name = ?
+                ORDER BY w.start_time DESC
+                """;
+
             PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setInt(1, workoutId);
+            pstmt.setString(1, exerciseName);
+
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                String exerciseName = rs.getString("exercisename");
+                String workoutDate = rs.getTimestamp("start_time").toString();
                 Exercise exercise = getExerciseByName(exerciseName);
 
                 if (exercise != null) {
-                    WorkoutSet set = new WorkoutSet(
-                            exercise,
-                            rs.getInt("reps"),
-                            rs.getDouble("weight")
-                    );
-                    set.setId(rs.getInt("id"));
+                    WorkoutSet set = new WorkoutSet(exercise, rs.getInt("reps"), rs.getDouble("weight"));
                     set.setCompleted(rs.getBoolean("completed"));
-                    sets.add(set);
-                } else {
-                    // Create placeholder exercise if not found
-                    exercise = new Exercise(exerciseName, "Unknown", "Unknown", "Intermediate", "");
-                    WorkoutSet set = new WorkoutSet(
-                            exercise,
-                            rs.getInt("reps"),
-                            rs.getDouble("weight")
-                    );
-                    set.setId(rs.getInt("id"));
-                    set.setCompleted(rs.getBoolean("completed"));
-                    sets.add(set);
+
+                    history.computeIfAbsent(workoutDate, k -> new ArrayList<>()).add(set);
                 }
             }
 
             rs.close();
             pstmt.close();
-        } catch (SQLException e) {
-            System.err.println("Failed to load sets: " + e.getMessage());
-        }
-        return sets;
-    }
+            System.out.println("📜 Loaded history for " + exerciseName + ": " + history.size() + " sessions");
 
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to load exercise history: " + e.getMessage());
+        }
+        return history;
+    }
 
     public Map<String, Object> getWorkoutStats() {
         Map<String, Object> stats = new HashMap<>();
@@ -698,7 +714,7 @@ public class DatabaseHelper {
         return stats;
     }
 
-    // ==================== UPDATE OPERATIONS ====================
+    // ==================== UPDATE/DELETE OPERATIONS ====================
 
     public boolean updateWorkout(int workoutId, Workout updatedWorkout) {
         try {
@@ -725,58 +741,6 @@ public class DatabaseHelper {
         return false;
     }
 
-    public boolean updateExercise(int exerciseId, Exercise updatedExercise) {
-        try {
-            String sql = "UPDATE exercises SET name = ?, muscle_group = ?, equipment = ?, difficulty = ?, instructions = ? WHERE id = ?";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-
-            pstmt.setString(1, updatedExercise.getName());
-            pstmt.setString(2, updatedExercise.getMuscleGroup());
-            pstmt.setString(3, updatedExercise.getEquipment());
-            pstmt.setString(4, updatedExercise.getDifficulty());
-            pstmt.setString(5, updatedExercise.getInstructions());
-            pstmt.setInt(6, exerciseId);
-
-            int rowsAffected = pstmt.executeUpdate();
-            pstmt.close();
-
-            if (rowsAffected > 0) {
-                System.out.println("✅ Exercise updated successfully! ID: " + exerciseId);
-                return true;
-            }
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to update exercise: " + e.getMessage());
-        }
-        return false;
-    }
-
-    public boolean updateWorkoutSet(int setId, int reps, double weight, boolean completed) {
-        try {
-            String sql = "UPDATE workout_sets SET reps = ?, weight = ?, completed = ? WHERE id = ?";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-
-            pstmt.setInt(1, reps);
-            pstmt.setDouble(2, weight);
-            pstmt.setBoolean(3, completed);
-            pstmt.setInt(4, setId);
-
-            int rowsAffected = pstmt.executeUpdate();
-            pstmt.close();
-
-            if (rowsAffected > 0) {
-                System.out.println("✅ Set updated successfully! ID: " + setId);
-                return true;
-            }
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to update set: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // ==================== DELETE OPERATIONS ====================
-
     public boolean deleteWorkout(int workoutId) {
         try {
             String sql = "DELETE FROM workouts WHERE id = ?";
@@ -796,97 +760,6 @@ public class DatabaseHelper {
         }
         return false;
     }
-
-    public boolean deleteExercise(int exerciseId) {
-        try {
-            String sql = "DELETE FROM exercises WHERE id = ?";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setInt(1, exerciseId);
-
-            int rowsAffected = pstmt.executeUpdate();
-            pstmt.close();
-
-            if (rowsAffected > 0) {
-                System.out.println("🗑️ Exercise deleted successfully! ID: " + exerciseId);
-                return true;
-            }
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to delete exercise: " + e.getMessage());
-        }
-        return false;
-    }
-
-    public int deleteWorkoutsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        int deletedCount = 0;
-        try {
-            String sql = "DELETE FROM workouts WHERE start_time BETWEEN ? AND ?";
-            PreparedStatement pstmt = connection.prepareStatement(sql);
-
-            pstmt.setTimestamp(1, Timestamp.valueOf(startDate));
-            pstmt.setTimestamp(2, Timestamp.valueOf(endDate));
-
-            deletedCount = pstmt.executeUpdate();
-            pstmt.close();
-
-            System.out.println("🗑️ Deleted " + deletedCount + " workouts in date range");
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to delete workouts by date: " + e.getMessage());
-        }
-        return deletedCount;
-    }
-
-    public boolean deleteAllWorkouts() {
-        try {
-            String sql = "DELETE FROM workouts";
-            Statement stmt = connection.createStatement();
-            int rowsAffected = stmt.executeUpdate(sql);
-            stmt.close();
-
-            System.out.println("🗑️ All workouts deleted! Total: " + rowsAffected);
-            return true;
-
-        } catch (SQLException e) {
-            System.err.println("❌ Failed to delete all workouts: " + e.getMessage());
-        }
-        return false;
-    }
-
-    // ==================== HELPER METHODS ====================
-
-    private Workout buildWorkoutFromResultSet(ResultSet rs) throws SQLException {
-        int id = rs.getInt("id");
-        String name = rs.getString("name");
-        LocalDateTime startTime = rs.getTimestamp("starttime").toLocalDateTime();
-        Timestamp endTimestamp = rs.getTimestamp("endtime");
-        LocalDateTime endTime = endTimestamp != null ? endTimestamp.toLocalDateTime() : null;
-        double totalVolume = rs.getDouble("totalvolume");
-        String notes = rs.getString("notes");
-
-        Workout workout = new Workout(name);
-        workout.setId(id);
-        workout.setStartTime(startTime);
-        workout.setEndTime(endTime);
-        workout.setTotalVolume(totalVolume);
-        workout.setNotes(notes);
-
-        // CRITICAL FIX: Load the sets for this workout
-        List<WorkoutSet> sets = getSetsForWorkout(id);
-        for (WorkoutSet set : sets) {
-            workout.addSet(set);
-        }
-
-        // Recalculate totals based on loaded sets
-        if (!sets.isEmpty()) {
-            workout.setTotalVolume(sets.stream()
-                    .mapToDouble(WorkoutSet::getVolume)
-                    .sum());
-        }
-
-        return workout;
-    }
-
 
     public void closeConnection() {
         try {

@@ -29,6 +29,26 @@ import java.util.*;
 
 
 public class MainController implements Initializable {
+    @FXML
+    private void handleStartWorkout() {
+        if (currentWorkout != null) {
+            showAlert("Active Workout", "Please finish your current workout first");
+            return;
+        }
+
+        // Create new workout
+        currentWorkout = new Workout("Workout - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
+        currentWorkout.setUserId(currentUser.getId());
+
+        System.out.println("🏋️ Started new workout: " + currentWorkout.getName());
+        showAlert("Workout Started", "Good luck with your workout! 💪");
+    }
+
+    @FXML
+    private void handleEndWorkout() {
+        finishWorkout();
+    }
+
     private SessionManager sessionManager;
     @FXML
     private TabPane mainTabPane;
@@ -48,6 +68,12 @@ public class MainController implements Initializable {
     private ScrollPane muscleMapScrollPane;
     @FXML
     private Pane muscleMapPane;
+    // Progress Tab fields (from main.fxml)
+    @FXML private ComboBox<String> exerciseFilterCombo;
+    @FXML private DatePicker fromDatePicker;
+    @FXML private DatePicker toDatePicker;
+    @FXML private VBox progressChartsBox;
+
     @FXML
     private ListView<Exercise> exerciseListView;
     @FXML
@@ -66,19 +92,24 @@ public class MainController implements Initializable {
     private VBox exerciseLogBox;
 
     // Progress Tab Components
-    @FXML
-    private VBox progressChartsBox;
-    @FXML
-    private ComboBox<String> exerciseFilterCombo;
-    @FXML
-    private DatePicker fromDatePicker, toDatePicker;
 
+   @FXML
+    // Add with other private fields
+    private ProgressController progressController;  // NEW - ProgressController instance
+
+    @FXML
+    // Declare the progress controller instance
     private DatabaseHelper dbHelper;
     private User currentUser;
     private Workout activeWorkout;
     private ObservableList<Exercise> exercises;
     @FXML
     private Button logoutButton;
+    // Add these with other private variables (around line 80)
+    private javafx.animation.Timeline workoutTimer;
+    private long workoutStartTime;
+    private Workout currentWorkout;  // Tracks the active workout
+    // ADD this method if missing in MainController
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -86,16 +117,14 @@ public class MainController implements Initializable {
         sessionManager = SessionManager.getInstance();
         exercises = FXCollections.observableArrayList();
 
-        // Don't initialize currentUser with placeholder anymore
-        // It will be set by setCurrentUser() method after login
-
+        // Initialize all tabs
         initializeHomeTab();
         initializeMuscleMapTab();
         initializeWorkoutTab();
         initializeProgressTab();
         loadExerciseDatabase();
 
-        // FIXED LOGOUT BUTTON STYLING WITH MAXIMUM VISIBILITY
+        // LOGOUT BUTTON STYLING
         if (logoutButton != null) {
             logoutButton.setStyle(
                     "-fx-background-color: linear-gradient(to right, #ff5555, #ff3333); " +
@@ -111,7 +140,6 @@ public class MainController implements Initializable {
                             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 6, 0, 0, 3);"
             );
 
-            // HOVER EFFECT
             logoutButton.setOnMouseEntered(e -> {
                 logoutButton.setStyle(
                         "-fx-background-color: linear-gradient(to right, #ff3333, #ff0000); " +
@@ -147,19 +175,17 @@ public class MainController implements Initializable {
             logoutButton.setOnAction(e -> handleLogout());
         }
 
-        // AUTO-REFRESH PROGRESS TAB WHEN SWITCHING TO IT
+        // TAB SWITCHING LISTENER
         if (mainTabPane != null) {
             mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
                 if (newTab != null && newTab.getText() != null) {
                     System.out.println("📍 Switched to tab: " + newTab.getText());
 
-                    // Refresh Progress tab when switched to
                     if (newTab.getText().contains("Progress") && currentUser != null) {
                         System.out.println("🔄 Refreshing Progress tab...");
                         loadProgressCharts();
                     }
 
-                    // Refresh Home tab when switched to
                     if (newTab.getText().contains("Home") && currentUser != null) {
                         System.out.println("🔄 Refreshing Home tab...");
                         loadUserWorkouts();
@@ -167,22 +193,49 @@ public class MainController implements Initializable {
                     }
                 }
             });
+
         }
+        // ✅ ADD THIS AT THE END - Initialize Progress Controller
+        progressController = new ProgressController();
+        progressController.initializeComponents(
+                this.progressChartsBox,
+                this.exerciseFilterCombo,
+                this.fromDatePicker,
+                this.toDatePicker);
     }
 
+
+
+    /**
+     * Load the ProgressController dynamically
+     */
+    private void loadProgressData() {
+        System.out.println("📊 loadProgressData() called");
+        loadProgressCharts();  // Call existing method
+    }
 
     // Add this NEW method to set user after login:
     public void setCurrentUser(User user) {
         this.currentUser = user;
-        sessionManager.login(user);
+        System.out.println("✅ User set in MainController: " + (user != null ? user.getUsername() : "null"));
 
-        if (welcomeLabel != null) {
-            welcomeLabel.setText("Welcome back, " + user.getName() + "! 💪");
+        if (user != null) {
+            // Update UI
+            updateWelcomeLabel();
+            updateUserStats();
+            loadUserWorkouts();
+
+            // Load progress data
+            System.out.println("🔄 Loading initial progress data");
+            loadProgressCharts();
         }
-
-        loadUserWorkouts();
-        updateUserStats();
     }
+    private void updateWelcomeLabel() {
+        if (currentUser != null && welcomeLabel != null) {
+            welcomeLabel.setText("Welcome back, " + currentUser.getUsername() + "! 💪");
+        }
+    }
+
 
     // Add logout handler:
     private void handleLogout() {
@@ -220,8 +273,11 @@ public class MainController implements Initializable {
 
     private void loadUserWorkouts() {
         if (currentUser != null && currentUser.getId() != null) {
-            List<Workout> userWorkouts = dbHelper.getWorkoutsByUser(currentUser.getId());
-            displayRecentWorkouts(userWorkouts);
+            // NEW
+            List<Workout> workouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
+
+
+            displayRecentWorkouts(workouts);
         }
     }
 
@@ -436,7 +492,9 @@ public class MainController implements Initializable {
 
 
     private void initializeProgressTab() {
-        // Set default date range
+        System.out.println("📊 Initializing Progress Tab");
+
+        // Set default date range (last 3 months)
         if (fromDatePicker != null) {
             fromDatePicker.setValue(LocalDate.now().minusMonths(3));
         }
@@ -444,43 +502,72 @@ public class MainController implements Initializable {
             toDatePicker.setValue(LocalDate.now());
         }
 
-        // Initialize exercise filter
-        if (exerciseFilterCombo != null) {
-            exerciseFilterCombo.setItems(FXCollections.observableArrayList(
-                    "All Exercises",
-                    "Bench Press",
-                    "Squats",
-                    "Deadlifts",
-                    "Pull-ups",
-                    "Overhead Press"
-            ));
-            exerciseFilterCombo.setValue("All Exercises");
-            UIStyler.styleComboBox(exerciseFilterCombo);
-
-            // Add listener to reload data
-            exerciseFilterCombo.setOnAction(e -> {
-                System.out.println("🔄 Exercise filter changed, reloading...");
-                loadProgressCharts();
-            });
-        }
-
-        // Add listeners for date pickers
+        // Add listeners for date changes
         if (fromDatePicker != null) {
             fromDatePicker.setOnAction(e -> {
-                System.out.println("🔄 Date range changed, reloading...");
+                System.out.println("📅 From date changed");
                 loadProgressCharts();
             });
         }
         if (toDatePicker != null) {
             toDatePicker.setOnAction(e -> {
-                System.out.println("🔄 Date range changed, reloading...");
+                System.out.println("📅 To date changed");
                 loadProgressCharts();
             });
         }
 
-        // Initial load
-        loadProgressCharts();
+        // Initialize exercise filter combo
+        if (exerciseFilterCombo != null) {
+            exerciseFilterCombo.getItems().add("All Exercises");
+            exerciseFilterCombo.setValue("All Exercises");
+        }
+
+        System.out.println("✅ Progress tab initialized successfully");
     }
+
+    // In MainController.java - Add this to your workout completion method
+    // In MainController.java - Add this to your workout completion method
+    private void finishWorkout() {
+        if (currentWorkout != null) {
+            currentWorkout.completeWorkout(); // Sets end time
+
+            // CRITICAL: Save to database with user ID
+            int workoutId = dbHelper.saveWorkout(currentWorkout, currentUser.getId());
+
+            if (workoutId > 0) {
+                showAlert("Success", "Workout saved! Total volume: " +
+                        String.format("%,.0f lbs", currentWorkout.getTotalVolume()));
+
+                // Refresh progress tab
+                if (progressController != null) {
+                    progressController.setCurrentUser(currentUser);
+                }
+            } else {
+                showAlert("Error", "Failed to save workout");
+            }
+
+            currentWorkout = null;
+            updateWorkoutDisplay();
+        }
+    }
+
+    // Helper method for alerts
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    // Update display after workout ends
+    private void updateWorkoutDisplay() {
+        // Clear workout UI or update status
+        if (currentWorkout == null) {
+            System.out.println("✅ Workout completed and cleared");
+        }
+    }
+
 
     private void debugLoadedWorkouts() {
         if (currentUser == null || currentUser.getId() == null) {
@@ -1036,7 +1123,6 @@ public class MainController implements Initializable {
 
         activeWorkout = new Workout(routineName);
         activeWorkout.setUserId(currentUser.getId());
-
         System.out.println("🏋️ Starting workout: " + routineName);
 
         startWorkoutBtn.setDisable(true);
@@ -1050,12 +1136,50 @@ public class MainController implements Initializable {
                         "-fx-font-weight: bold; " +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
         );
+        // ⏱️ START ACTUAL TIMER
+        workoutStartTime = System.currentTimeMillis();
+        startWorkoutTimer();
+
+        // Load exercises FIRST
+        loadWorkoutExercises();
 
         showAlert("Workout started! 💪\nLog your sets below.", Alert.AlertType.INFORMATION);
     }
+    private void startWorkoutTimer() {
+        // Stop existing timer if any
+        if (workoutTimer != null) {
+            workoutTimer.stop();
+        }
+
+        // Create new timer that updates every second
+        workoutTimer = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> {
+                    long elapsedSeconds = (System.currentTimeMillis() - workoutStartTime) / 1000;
+                    long minutes = elapsedSeconds / 60;
+                    long seconds = elapsedSeconds % 60;
+
+                    workoutTimerLabel.setText(String.format("⏱️ Workout in progress: %02d:%02d", minutes, seconds));
+                    workoutTimerLabel.setStyle(
+                            "-fx-text-fill: #00f5ff; " +
+                                    "-fx-font-size: 20px; " +
+                                    "-fx-font-weight: bold; " +
+                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
+                    );
+                })
+        );
+
+        workoutTimer.setCycleCount(javafx.animation.Timeline.INDEFINITE);
+        workoutTimer.play();
+    }
+
 
 
     private void endWorkout() {
+        // STOP TIMER FIRST
+        if (workoutTimer != null) {
+            workoutTimer.stop();
+            workoutTimer = null;
+        }
         if (activeWorkout != null && currentUser != null) {
             activeWorkout.completeWorkout();
 
@@ -1120,15 +1244,19 @@ public class MainController implements Initializable {
 
     private void loadWorkoutExercises() {
         exerciseLogBox.getChildren().clear();
-
         String routine = routineSelector.getValue();
+
         List<String> exerciseNames = switch (routine) {
-            case "💪 Push Day" ->
+            case "Push Day" ->  // REMOVED emoji
                     Arrays.asList("Bench Press", "Overhead Press", "Incline Dumbbell Press", "Tricep Dips", "Lateral Raises");
-            case "🔙 Pull Day" -> Arrays.asList("Pull-ups", "Bent-over Rows", "Deadlifts", "Bicep Curls", "Face Pulls");
-            case "🦵 Leg Day" -> Arrays.asList("Squats", "Romanian Deadlifts", "Leg Press", "Lunges", "Calf Raises");
-            case "🔝 Upper Body" -> Arrays.asList("Bench Press", "Pull-ups", "Overhead Press", "Bent-over Rows");
-            case "🎯 Full Body" -> Arrays.asList("Squats", "Bench Press", "Pull-ups", "Overhead Press", "Planks");
+            case "Pull Day" ->  // REMOVED emoji
+                    Arrays.asList("Pull-ups", "Bent-over Rows", "Deadlifts", "Bicep Curls", "Face Pulls");
+            case "Leg Day" ->  // REMOVED emoji
+                    Arrays.asList("Squats", "Romanian Deadlifts", "Leg Press", "Lunges", "Standing Calf Raises");
+            case "Upper Body" ->  // REMOVED emoji
+                    Arrays.asList("Bench Press", "Pull-ups", "Overhead Press", "Bent-over Rows");
+            case "Full Body" ->  // REMOVED emoji
+                    Arrays.asList("Squats", "Bench Press", "Pull-ups", "Overhead Press", "Planks");
             default -> Arrays.asList("Bench Press", "Squats", "Pull-ups", "Overhead Press");
         };
 
@@ -1137,6 +1265,7 @@ public class MainController implements Initializable {
             exerciseLogBox.getChildren().add(exerciseBox);
         }
     }
+
 
     private VBox createExerciseLogBox(String exerciseName) {
         VBox box = new VBox(8);
@@ -1229,202 +1358,223 @@ public class MainController implements Initializable {
     }
 
 
-    private void loadProgressCharts() {
-        if (currentUser == null || currentUser.getId() == null) {
-            displayEmptyProgressState();
+    public void loadProgressCharts() {
+        System.out.println("📊 loadProgressCharts() called");
+
+        if (currentUser == null) {
+            System.out.println("⚠️ No current user - showing no data message");
+            showNoProgressData();
+            return;
+        }
+
+        if (progressChartsBox == null) {
+            System.err.println("❌ progressChartsBox is null! FXML injection failed.");
             return;
         }
 
         progressChartsBox.getChildren().clear();
 
         // Get date range
-        LocalDateTime startDate = fromDatePicker.getValue() != null
-                ? fromDatePicker.getValue().atStartOfDay()
-                : LocalDateTime.now().minusMonths(3);
-        LocalDateTime endDate = toDatePicker.getValue() != null
-                ? toDatePicker.getValue().atTime(23, 59, 59)
-                : LocalDateTime.now();
+        LocalDate fromDate = fromDatePicker != null ? fromDatePicker.getValue() : LocalDate.now().minusMonths(3);
+        LocalDate toDate = toDatePicker != null ? toDatePicker.getValue() : LocalDate.now();
 
-        // Load workouts for user
+        LocalDateTime startDate = fromDate.atStartOfDay();
+        LocalDateTime endDate = toDate.atTime(23, 59, 59);
+
+        System.out.println("🔄 Loading workouts for user ID: " + currentUser.getId());
+        System.out.println("📅 Date range: " + fromDate + " to " + toDate);
+
+        // Load workouts from database
         List<Workout> allWorkouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
-        List<Workout> filteredWorkouts = allWorkouts.stream()
+        System.out.println("📊 Total workouts from DB: " + allWorkouts.size());
+
+        // Filter by date range
+        List<Workout> workouts = allWorkouts.stream()
                 .filter(w -> w.getStartTime().isAfter(startDate) &&
                         w.getStartTime().isBefore(endDate))
                 .collect(Collectors.toList());
 
-        if (filteredWorkouts.isEmpty()) {
-            displayEmptyProgressState();
+        System.out.println("📊 Workouts in date range: " + workouts.size());
+
+        // Debug: Show workout details
+        if (!workouts.isEmpty()) {
+            System.out.println("📋 Workout details:");
+            for (Workout w : workouts) {
+                System.out.println("  - " + w.getName() +
+                        " | Date: " + w.getStartTime().toLocalDate() +
+                        " | Sets: " + (w.getSets() != null ? w.getSets().size() : 0) +
+                        " | Volume: " + w.getTotalVolume() + " lbs");
+            }
+        }
+
+        if (workouts.isEmpty()) {
+            showNoProgressData();
             return;
         }
 
-        // Display real progress data
-        displayRealStrengthProgress(filteredWorkouts);
-        displayRealVolumeProgress(filteredWorkouts);
-        displayRealConsistencyStats(filteredWorkouts, allWorkouts);
-        displayBodyMetrics();
+        // Create progress cards
+        createProgressCards(workouts);
     }
 
-    private void displayEmptyProgressState() {
-        progressChartsBox.getChildren().clear();
+    private void showNoProgressData() {
+        if (progressChartsBox == null) return;
 
-        VBox emptyCard = createProgressCard(
+        VBox noDataCard = createProgressCard(
                 "📊 No Data Yet",
-                "🏋️ Start logging workouts to see your progress!\n\n" +
-                        "💪 Track your lifts\n" +
-                        "📈 Watch your numbers grow\n" +
-                        "🔥 Build consistency\n\n" +
-                        "👉 Go to Workout tab to begin!",
-                "#FF9800"
+                "🏋️ Start logging workouts to see progress!\n\n" +
+                        "💪 Complete a workout in the Workout tab\n" +
+                        "📈 Track your strength and volume gains\n" +
+                        "🔥 Build your workout streak!\n\n" +
+                        "⚠️ Make sure to LOG SETS during your workout!",
+                "#FF5722"
         );
-        progressChartsBox.getChildren().add(emptyCard);
+        progressChartsBox.getChildren().add(noDataCard);
+        System.out.println("📊 Displayed 'No Data Yet' message");
     }
 
-    private void displayRealStrengthProgress(List<Workout> workouts) {
-        Map<String, Double> maxWeights = new HashMap<>();
-        Map<String, Integer> exerciseCounts = new HashMap<>();
+    private void createProgressCards(List<Workout> workouts) {
+        // Strength Progress Card
+        VBox strengthCard = createStrengthCard(workouts);
+        progressChartsBox.getChildren().add(strengthCard);
 
-        // Calculate max weights for each exercise
+        // Volume Progress Card
+        VBox volumeCard = createVolumeCard(workouts);
+        progressChartsBox.getChildren().add(volumeCard);
+
+        // Consistency Card
+        VBox consistencyCard = createConsistencyCard(workouts);
+        progressChartsBox.getChildren().add(consistencyCard);
+
+        // Recent Workouts Card
+        VBox recentCard = createRecentWorkoutsCard(workouts);
+        progressChartsBox.getChildren().add(recentCard);
+
+        System.out.println("✅ Created " + progressChartsBox.getChildren().size() + " progress cards");
+    }
+
+    private VBox createStrengthCard(List<Workout> workouts) {
+        Map<String, Double> maxWeights = new HashMap<>();
+
         for (Workout workout : workouts) {
-            for (WorkoutSet set : workout.getSets()) {
-                String exerciseName = set.getExercise().getName();
-                double weight = set.getWeight();
-                maxWeights.put(exerciseName,
-                        Math.max(maxWeights.getOrDefault(exerciseName, 0.0), weight));
-                exerciseCounts.put(exerciseName,
-                        exerciseCounts.getOrDefault(exerciseName, 0) + 1);
+            if (workout.getSets() != null) {
+                for (WorkoutSet set : workout.getSets()) {
+                    String exerciseName = set.getExercise().getName();
+                    double weight = set.getWeight();
+                    maxWeights.put(exerciseName,
+                            Math.max(maxWeights.getOrDefault(exerciseName, 0.0), weight));
+                }
             }
         }
 
         StringBuilder strengthText = new StringBuilder();
         if (maxWeights.isEmpty()) {
-            strengthText.append("💪 No strength data yet\n");
+            strengthText.append("💪 No strength data yet\n\n");
+            strengthText.append("📊 Log sets with weights to track PRs!");
         } else {
-            // Sort by frequency and display top exercises
+            strengthText.append("🏆 Personal Records:\n\n");
             maxWeights.entrySet().stream()
-                    .sorted((e1, e2) -> exerciseCounts.get(e2.getKey())
-                            .compareTo(exerciseCounts.get(e1.getKey())))
-                    .limit(4)
-                    .forEach(entry -> {
-                        strengthText.append(String.format(
-                                "🏋️ %s: %.0f lbs (%d sets)\n",
-                                entry.getKey(),
-                                entry.getValue(),
-                                exerciseCounts.get(entry.getKey())
-                        ));
-                    });
+                    .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                    .limit(5)
+                    .forEach(entry -> strengthText.append(String.format("🏋️ %s: %.0f lbs\n",
+                            entry.getKey(), entry.getValue())));
+            strengthText.append("\n💪 Keep pushing those PRs!");
         }
 
-        VBox strengthCard = createProgressCard("💪 Strength Progress",
-                strengthText.toString(), "#4CAF50");
-        progressChartsBox.getChildren().add(strengthCard);
+        return createProgressCard("💪 Strength Progress", strengthText.toString(), "#4CAF50");
     }
 
-    private void displayRealVolumeProgress(List<Workout> workouts) {
-        double totalVolume = workouts.stream()
-                .mapToDouble(Workout::getTotalVolume)
-                .sum();
-
-        double avgVolume = workouts.isEmpty() ? 0 : totalVolume / workouts.size();
-
-        // Calculate this week vs last week
-        LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
-        LocalDateTime twoWeeksAgo = LocalDateTime.now().minusDays(14);
-
-        double thisWeekVolume = workouts.stream()
-                .filter(w -> w.getStartTime().isAfter(weekAgo))
-                .mapToDouble(Workout::getTotalVolume)
-                .sum();
-
-        double lastWeekVolume = workouts.stream()
-                .filter(w -> w.getStartTime().isAfter(twoWeeksAgo) &&
-                        w.getStartTime().isBefore(weekAgo))
-                .mapToDouble(Workout::getTotalVolume)
-                .sum();
-
-        double improvement = lastWeekVolume > 0
-                ? ((thisWeekVolume - lastWeekVolume) / lastWeekVolume * 100)
-                : 0;
+    private VBox createVolumeCard(List<Workout> workouts) {
+        double totalVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).sum();
+        double avgVolume = totalVolume / workouts.size();
+        double maxVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).max().orElse(0.0);
 
         String volumeText = String.format(
-                "💪 This week: %,.0f lbs\n" +
-                        "📉 Last week: %,.0f lbs\n" +
-                        "%s Improvement: %+.1f%%\n" +
-                        "📊 Average per workout: %,.0f lbs",
-                thisWeekVolume,
-                lastWeekVolume,
-                improvement >= 0 ? "🔥" : "⚠️",
-                improvement,
-                avgVolume
+                "📊 Total Volume: %,.0f lbs\n" +
+                        "📈 Average/Workout: %,.0f lbs\n" +
+                        "🏆 Best Session: %,.0f lbs\n" +
+                        "🔥 Total Workouts: %d\n\n" +
+                        "💪 Volume = Weight × Reps × Sets",
+                totalVolume, avgVolume, maxVolume, workouts.size()
         );
 
-        VBox volumeCard = createProgressCard("📊 Weekly Volume", volumeText, "#2196F3");
-        progressChartsBox.getChildren().add(volumeCard);
+        return createProgressCard("📊 Volume Stats", volumeText, "#2196F3");
     }
 
-    private void displayRealConsistencyStats(List<Workout> recentWorkouts,
-                                             List<Workout> allWorkouts) {
-        // Calculate current streak
-        List<LocalDate> workoutDates = allWorkouts.stream()
+    private VBox createConsistencyCard(List<Workout> workouts) {
+        int totalWorkouts = workouts.size();
+        Set<LocalDate> workoutDates = workouts.stream()
                 .map(w -> w.getStartTime().toLocalDate())
-                .distinct()
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
-
-        int currentStreak = 0;
-        LocalDate checkDate = LocalDate.now();
-        for (LocalDate date : workoutDates) {
-            if (date.equals(checkDate) || date.equals(checkDate.minusDays(1))) {
-                currentStreak++;
-                checkDate = date.minusDays(1);
-            } else {
-                break;
-            }
-        }
-
-        // Workouts this month
-        long workoutsThisMonth = recentWorkouts.stream()
-                .filter(w -> w.getStartTime().isAfter(LocalDateTime.now().minusMonths(1)))
-                .count();
+                .collect(Collectors.toSet());
 
         String consistencyText = String.format(
-                "🔥 Current streak: %d days\n" +
-                        "🏆 Longest streak: %d days\n" +
-                        "📅 Workouts this month: %d\n" +
-                        "🎯 Goal: 20 workouts/month",
-                currentStreak,
-                currentStreak, // You can calculate longest separately
-                workoutsThisMonth
+                "🔥 Current Streak: 0 days\n" +
+                        "📅 Total Workouts: %d\n" +
+                        "📊 Workout Days: %d\n\n" +
+                        "🎯 Keep the momentum going!",
+                totalWorkouts, workoutDates.size()
         );
 
-        VBox streakCard = createProgressCard("🔥 Consistency",
-                consistencyText, "#FF5722");
-        progressChartsBox.getChildren().add(streakCard);
+        return createProgressCard("🔥 Consistency", consistencyText, "#FF5722");
     }
 
+    private VBox createRecentWorkoutsCard(List<Workout> workouts) {
+        StringBuilder recentText = new StringBuilder("📋 Last 5 Workouts:\n\n");
+
+        workouts.stream()
+                .limit(5)
+                .forEach(w -> {
+                    recentText.append(String.format("💪 %s\n", w.getName()));
+                    recentText.append(String.format("📅 %s\n", w.getStartTime().toLocalDate()));
+                    recentText.append(String.format("⏱️ %d min | 📊 %.0f lbs\n\n",
+                            w.getDurationMinutes(), w.getTotalVolume()));
+                });
+
+        return createProgressCard("📋 Recent Activity", recentText.toString(), "#9C27B0");
+    }
 
     private VBox createProgressCard(String title, String content, String color) {
         VBox card = new VBox(12);
-        card.setStyle("-fx-background-color: linear-gradient(to bottom right, " + color + ", " + adjustBrightness(color, 0.8) + "); " +
-                "-fx-padding: 20px; -fx-background-radius: 15px; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 8, 0, 0, 4);");
-        card.setPrefWidth(320);
-        card.setMinHeight(150);
+        card.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, " + color + ", " +
+                        adjustBrightness(color) + "); " +
+                        "-fx-padding: 20px; " +
+                        "-fx-background-radius: 15px; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 5);"
+        );
+        card.setPrefWidth(350);
+        card.setMinHeight(200);
+        VBox.setMargin(card, new Insets(10));
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);");
+        titleLabel.setStyle(
+                "-fx-text-fill: white; " +
+                        "-fx-font-size: 22px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 0, 2);"
+        );
 
         Label contentLabel = new Label(content);
-        contentLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-line-spacing: 4px; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 1, 0, 0, 1);");
+        contentLabel.setWrapText(true);
+        contentLabel.setStyle(
+                "-fx-text-fill: white; " +
+                        "-fx-font-size: 16px; " +
+                        "-fx-line-spacing: 5px; " +
+                        "-fx-font-weight: 500; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0, 0, 1);"
+        );
 
         card.getChildren().addAll(titleLabel, contentLabel);
-
-        // Add hover effect
-        card.setOnMouseEntered(e -> card.setScaleX(1.05));
-        card.setOnMouseExited(e -> card.setScaleX(1.0));
-
         return card;
+    }
+
+    private String adjustBrightness(String color) {
+        return switch (color) {
+            case "#4CAF50" -> "#2E7D32";
+            case "#2196F3" -> "#1565C0";
+            case "#FF5722" -> "#D84315";
+            case "#9C27B0" -> "#7B1FA2";
+            default -> color;
+        };
     }
 
     private String adjustBrightness(String color, double factor) {

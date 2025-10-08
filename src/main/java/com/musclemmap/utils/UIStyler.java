@@ -236,7 +236,13 @@ public class UIStyler {
     /**
      * Beautiful combo box with intelligent styling
      */
-    public static <T> void styleComboBox(ComboBox<T> comboBox) {
+    /**
+     * Beautiful combo box with maximum visibility styling
+     */
+    /**
+     * Beautiful combo box with maximum visibility styling
+     */
+    public static void styleComboBox(ComboBox<?> comboBox) {
         // BUTTON AREA STYLING - DARK BACKGROUND WITH WHITE TEXT
         comboBox.setStyle(
                 "-fx-background-color: #1a1a1a; " +
@@ -253,80 +259,79 @@ public class UIStyler {
         );
 
         // DROPDOWN POPUP LIST STYLING - MAXIMUM VISIBILITY
-        comboBox.setCellFactory(param -> {
-            return new ListCell<T>() {
-                @Override
-                protected void updateItem(T item, boolean empty) {
-                    super.updateItem(item, empty);
+        comboBox.setCellFactory(param -> new ListCell() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
 
-                    if (empty || item == null) {
-                        setText(null);
-                        setGraphic(null);
-                    } else {
-                        setText(item.toString());
-                        setGraphic(null);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item.toString());
 
-                        // DARK BACKGROUND WITH WHITE TEXT FOR EACH ITEM
-                        setStyle(
-                                "-fx-background-color: #1a1a1a; " +
-                                        "-fx-text-fill: #FFFFFF; " +
-                                        "-fx-font-size: 15px; " +
-                                        "-fx-font-weight: 600; " +
-                                        "-fx-padding: 12px 16px;"
-                        );
-                    }
-                }
+                    // DARK BACKGROUND WITH WHITE TEXT FOR EACH ITEM
+                    setStyle(
+                            "-fx-background-color: #1a1a1a; " +
+                                    "-fx-text-fill: #FFFFFF; " +
+                                    "-fx-font-size: 15px; " +
+                                    "-fx-font-weight: 600; " +
+                                    "-fx-padding: 12px 16px; " +
+                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);"
+                    );
 
-                // INSTANCE INITIALIZER FOR HOVER EFFECTS
-                {
+                    // HOVER STATE - CYAN BACKGROUND
                     setOnMouseEntered(e -> {
-                        if (!isEmpty() && getItem() != null) {
+                        if (!isEmpty()) {
                             setStyle(
                                     "-fx-background-color: #00f5ff; " +
                                             "-fx-text-fill: #000000; " +
                                             "-fx-font-size: 15px; " +
                                             "-fx-font-weight: bold; " +
-                                            "-fx-padding: 12px 16px;"
+                                            "-fx-padding: 12px 16px; " +
+                                            "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.6), 8, 0, 0, 4);"
                             );
                         }
                     });
 
                     setOnMouseExited(e -> {
-                        if (!isEmpty() && getItem() != null) {
+                        if (!isEmpty()) {
                             setStyle(
                                     "-fx-background-color: #1a1a1a; " +
                                             "-fx-text-fill: #FFFFFF; " +
                                             "-fx-font-size: 15px; " +
                                             "-fx-font-weight: 600; " +
-                                            "-fx-padding: 12px 16px;"
+                                            "-fx-padding: 12px 16px; " +
+                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);"
                             );
                         }
                     });
                 }
-            };
+            }
         });
 
         // BUTTON CELL (SELECTED VALUE DISPLAY) - WHITE TEXT
-        comboBox.setButtonCell(new ListCell<T>() {
+        comboBox.setButtonCell(new ListCell() {
             @Override
-            protected void updateItem(T item, boolean empty) {
+            protected void updateItem(Object item, boolean empty) {
                 super.updateItem(item, empty);
 
                 if (empty || item == null) {
                     setText(null);
-                    setGraphic(null);
                 } else {
                     setText(item.toString());
-                    setGraphic(null);
                     setStyle(
                             "-fx-text-fill: #FFFFFF; " +
                                     "-fx-font-size: 16px; " +
-                                    "-fx-font-weight: bold;"
+                                    "-fx-font-weight: bold; " +
+                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 0, 1);"
                     );
                 }
             }
         });
     }
+
+
 
 
 

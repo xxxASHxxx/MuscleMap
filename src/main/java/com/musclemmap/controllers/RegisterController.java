@@ -24,7 +24,7 @@ public class RegisterController {
 
     @FXML
     public void initialize() {
-        DatabaseHelper dbHelper = DatabaseHelper.getInstance();
+        this.dbHelper = DatabaseHelper.getInstance();  // ✅ CORRECT - assigns to class field
 
         errorLabel.setVisible(false);
         passwordStrengthLabel.setVisible(false);
@@ -33,6 +33,7 @@ public class RegisterController {
             updatePasswordStrength(newVal);
         });
     }
+
 
     @FXML
     private void handleRegister() {
