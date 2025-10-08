@@ -252,17 +252,19 @@ public class DatabaseHelper {
         )""";
 
             String createSetsTable = """
-        CREATE TABLE IF NOT EXISTS workout_sets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            workout_id INTEGER NOT NULL,
-            exercise_name TEXT NOT NULL,
-            muscle_group TEXT,
-            reps INTEGER NOT NULL,
-            weight REAL NOT NULL,
-            set_type TEXT DEFAULT 'NORMAL',
-            completed BOOLEAN DEFAULT 0,
-            FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
-        )""";
+CREATE TABLE IF NOT EXISTS workout_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workout_id INTEGER NOT NULL,
+    exercise_name TEXT NOT NULL,
+    muscle_group TEXT,
+    reps INTEGER NOT NULL,
+    weight REAL NOT NULL,
+    set_number INTEGER DEFAULT 1,
+    set_type TEXT DEFAULT 'NORMAL',
+    completed BOOLEAN DEFAULT 0,
+    FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
+)""";
+
 
             Statement stmt = connection.createStatement();
             stmt.execute(createUsersTable);
@@ -322,36 +324,63 @@ public class DatabaseHelper {
     // ==================== WORKOUT OPERATIONS ====================
 
     public int saveWorkout(Workout workout, int userId) {
-        int workoutId = -1;
         try {
-            String sql = "INSERT INTO workouts (user_id, name, start_time, end_time, total_volume, notes) VALUES (?, ?, ?, ?, ?, ?)";
-            PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            // Insert workout
+            String workoutSql = "INSERT INTO workouts (user_id, name, start_time, end_time) VALUES (?, ?, ?, ?)";
+            PreparedStatement workoutStmt = connection.prepareStatement(workoutSql, Statement.RETURN_GENERATED_KEYS);
 
-            pstmt.setInt(1, userId);
-            pstmt.setString(2, workout.getName());
-            pstmt.setTimestamp(3, Timestamp.valueOf(workout.getStartTime()));
-            pstmt.setTimestamp(4, workout.getEndTime() != null ? Timestamp.valueOf(workout.getEndTime()) : null);
-            pstmt.setDouble(5, workout.getTotalVolume());
-            pstmt.setString(6, workout.getNotes());
+            workoutStmt.setInt(1, userId);
+            workoutStmt.setString(2, workout.getName());
+            workoutStmt.setString(3, workout.getStartTime().toString());
+            workoutStmt.setString(4, workout.getEndTime() != null ? workout.getEndTime().toString() : LocalDateTime.now().toString());
 
-            pstmt.executeUpdate();
+            int affectedRows = workoutStmt.executeUpdate();
 
-            ResultSet generatedKeys = pstmt.getGeneratedKeys();
+            if (affectedRows == 0) {
+                System.err.println("❌ Failed to insert workout");
+                return -1;
+            }
+
+            // Get generated workout ID
+            ResultSet generatedKeys = workoutStmt.getGeneratedKeys();
+            int workoutId = -1;
             if (generatedKeys.next()) {
                 workoutId = generatedKeys.getInt(1);
-                saveSets(workoutId, workout.getSets());
-                System.out.println("✅ Workout saved! ID: " + workoutId + " | Sets: " + workout.getSets().size() + " | Volume: " + workout.getTotalVolume());
+                System.out.println("✅ Workout saved with ID: " + workoutId);
             }
 
             generatedKeys.close();
-            pstmt.close();
+            workoutStmt.close();
+
+            // Save all sets
+            if (workout.getSets() != null && !workout.getSets().isEmpty()) {
+                String setSql = "INSERT INTO workout_sets (workout_id, exercise_name, reps, weight, set_number) VALUES (?, ?, ?, ?, ?)";
+                PreparedStatement setStmt = connection.prepareStatement(setSql);
+
+                for (int i = 0; i < workout.getSets().size(); i++) {
+                    WorkoutSet set = workout.getSets().get(i);
+                    setStmt.setInt(1, workoutId);
+                    setStmt.setString(2, set.getExercise().getName());
+                    setStmt.setInt(3, set.getReps());
+                    setStmt.setDouble(4, set.getWeight());
+                    setStmt.setInt(5, i + 1);
+                    setStmt.addBatch();
+                }
+
+                int[] setResults = setStmt.executeBatch();
+                System.out.println("✅ Saved " + setResults.length + " sets");
+                setStmt.close();
+            }
+
+            return workoutId;
 
         } catch (SQLException e) {
-            System.err.println("❌ Failed to save workout: " + e.getMessage());
+            System.err.println("❌ Error saving workout: " + e.getMessage());
             e.printStackTrace();
+            return -1;
         }
-        return workoutId;
     }
+
 
     private void saveSets(int workoutId, List<WorkoutSet> sets) {
         try {

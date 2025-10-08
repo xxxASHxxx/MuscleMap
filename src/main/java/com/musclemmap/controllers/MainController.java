@@ -1,6 +1,8 @@
 package com.musclemmap.controllers;
 
 import com.musclemmap.utils.SessionManager;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -32,29 +34,104 @@ public class MainController implements Initializable {
     @FXML
     private void handleStartWorkout() {
         if (currentWorkout != null) {
-            showAlert("Active Workout", "Please finish your current workout first");
+            showAlert(Alert.AlertType.WARNING, "Active Workout", "Please finish your current workout first!");
             return;
         }
 
         // Create new workout
-        currentWorkout = new Workout("Workout - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
+        currentWorkout = new Workout("Workout - " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")));
         currentWorkout.setUserId(currentUser.getId());
 
+        // Start timer
+        workoutStartTime = System.currentTimeMillis();
+        startWorkoutTimer();
+
+        startWorkoutBtn.setDisable(true);
+        endWorkoutBtn.setDisable(false);
+
         System.out.println("🏋️ Started new workout: " + currentWorkout.getName());
-        showAlert("Workout Started", "Good luck with your workout! 💪");
+        showAlert(Alert.AlertType.INFORMATION, "Workout Started", "Good luck with your workout! 💪");
     }
 
     @FXML
     private void handleEndWorkout() {
-        finishWorkout();
+        if (currentWorkout == null) {
+            showAlert(Alert.AlertType.WARNING, "No Active Workout", "No workout in progress!");
+            return;
+        }
+
+        // Stop timer
+        if (workoutTimer != null) {
+            workoutTimer.stop();
+        }
+
+        // Complete workout
+        currentWorkout.completeWorkout();
+
+        // Save to database
+        int workoutId = dbHelper.saveWorkout(currentWorkout, currentUser.getId());
+
+        if (workoutId > 0) {
+            showAlert(Alert.AlertType.INFORMATION, "Success",
+                    String.format("Workout saved! 💪\n\nTotal Volume: %,.0f lbs\nTotal Sets: %d\nTotal Reps: %d\nDuration: %s",
+                            currentWorkout.getTotalVolume(),
+                            currentWorkout.getTotalSets(),
+                            currentWorkout.getTotalReps(),
+                            currentWorkout.getFormattedDuration()));
+
+            // Refresh progress tab
+            if (progressController != null) {
+                progressController.setCurrentUser(currentUser);
+            }
+
+            // Refresh home tab stats
+            loadUserWorkouts();
+            updateUserStats();
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to save workout to database!");
+        }
+
+        // Reset
+        currentWorkout = null;
+        workoutTimerLabel.setText("⏱️ Timer: 00:00:00");
+        startWorkoutBtn.setDisable(false);
+        endWorkoutBtn.setDisable(true);
+
+        System.out.println("✅ Workout completed and saved");
     }
+
+    private void startWorkoutTimer() {
+        workoutTimer = new Timeline(new KeyFrame(javafx.util.Duration.seconds(1), event -> {
+            long elapsedMillis = System.currentTimeMillis() - workoutStartTime;
+            long seconds = (elapsedMillis / 1000) % 60;
+            long minutes = (elapsedMillis / (1000 * 60)) % 60;
+            long hours = (elapsedMillis / (1000 * 60 * 60));
+
+            workoutTimerLabel.setText(String.format("⏱️ Timer: %02d:%02d:%02d", hours, minutes, seconds));
+        }));
+        workoutTimer.setCycleCount(Timeline.INDEFINITE);
+        workoutTimer.play();
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
 
     private SessionManager sessionManager;
     @FXML
     private TabPane mainTabPane;
     @FXML
     private Tab homeTab, workoutTab, muscleMapTab, progressTab;
-
+    @FXML private ComboBox<Exercise> exerciseComboBox;
+    @FXML private TextField weightField;
+    @FXML private TextField repsField;
+    @FXML private Label currentWorkoutStatsLabel;
     // Home Tab Components
     @FXML
     private Label welcomeLabel, streakLabel, lastWorkoutLabel;
@@ -73,7 +150,6 @@ public class MainController implements Initializable {
     @FXML private DatePicker fromDatePicker;
     @FXML private DatePicker toDatePicker;
     @FXML private VBox progressChartsBox;
-
     @FXML
     private ListView<Exercise> exerciseListView;
     @FXML
@@ -105,25 +181,128 @@ public class MainController implements Initializable {
     private ObservableList<Exercise> exercises;
     @FXML
     private Button logoutButton;
-    // Add these with other private variables (around line 80)
-    private javafx.animation.Timeline workoutTimer;
-    private long workoutStartTime;
-    private Workout currentWorkout;  // Tracks the active workout
-    // ADD this method if missing in MainController
+    private Workout currentWorkout = null;
+    private Timeline workoutTimer;
+    private long workoutStartTime = 0;
+    @FXML
+    private void handleLogSet() {
+        if (currentWorkout == null) {
+            showAlert(Alert.AlertType.WARNING, "No Active Workout", "Start a workout first!");
+            return;
+        }
+
+        try {
+            // Get selected exercise
+            Exercise selectedExercise = exerciseComboBox.getValue();
+            if (selectedExercise == null) {
+                showAlert(Alert.AlertType.WARNING, "No Exercise Selected", "Please select an exercise!");
+                return;
+            }
+
+            // Parse weight and reps
+            double weight = Double.parseDouble(weightField.getText().trim());
+            int reps = Integer.parseInt(repsField.getText().trim());
+
+            if (weight <= 0 || reps <= 0) {
+                showAlert(Alert.AlertType.WARNING, "Invalid Input", "Weight and reps must be positive!");
+                return;
+            }
+
+            // Create and add set
+            WorkoutSet set = new WorkoutSet(selectedExercise, reps, weight);
+            set.setCompleted(true);
+            currentWorkout.addSet(set);
+            addSetToExerciseLog(selectedExercise.getName(), reps, weight);
+            // Update display
+            updateCurrentWorkoutDisplay();
+
+            // Clear fields
+            weightField.clear();
+            repsField.clear();
+
+            System.out.println("✅ Logged set: " + set);
+
+        } catch (NumberFormatException e) {
+            showAlert(Alert.AlertType.ERROR, "Invalid Input", "Please enter valid numbers for weight and reps!");
+        }
+    }
+    private void addSetToExerciseLog(String exerciseName, int reps, double weight) {
+        HBox setEntry = new HBox(15);
+        setEntry.setAlignment(Pos.CENTER_LEFT);
+        setEntry.setStyle(
+                "-fx-background-color: linear-gradient(to right, #2b2b2b, #1a1a1a);" +
+                        "-fx-padding: 12px 20px;" +
+                        "-fx-background-radius: 10px;" +
+                        "-fx-border-color: #4CAF50;" +
+                        "-fx-border-width: 2px;" +
+                        "-fx-border-radius: 10px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(76,175,80,0.4), 8, 0, 0, 3);"
+        );
+
+        Label exerciseLabel = new Label("✅ " + exerciseName);
+        exerciseLabel.setStyle(
+                "-fx-text-fill: #4CAF50;" +
+                        "-fx-font-size: 16px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-min-width: 200px;"
+        );
+
+        Label detailsLabel = new Label(reps + " reps @ " + String.format("%.0f", weight) + " lbs");
+        detailsLabel.setStyle(
+                "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label volumeLabel = new Label("Volume: " + String.format("%.0f", reps * weight) + " lbs");
+        volumeLabel.setStyle(
+                "-fx-text-fill: #00d4ff;" +
+                        "-fx-font-size: 12px;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        setEntry.getChildren().addAll(exerciseLabel, detailsLabel, spacer, volumeLabel);
+
+        // Add to top of exercise log
+        exerciseLogBox.getChildren().add(0, setEntry);
+
+        VBox.setMargin(setEntry, new Insets(5));
+    }
+    private void updateCurrentWorkoutDisplay() {
+        if (currentWorkout == null) return;
+
+        StringBuilder display = new StringBuilder();
+        display.append(String.format("📊 Current Workout Stats:\n\n"));
+        display.append(String.format("Sets: %d\n", currentWorkout.getTotalSets()));
+        display.append(String.format("Reps: %d\n", currentWorkout.getTotalReps()));
+        display.append(String.format("Volume: %,.0f lbs\n\n", currentWorkout.getTotalVolume()));
+        display.append("Recent Sets:\n");
+
+        List<WorkoutSet> sets = currentWorkout.getSets();
+        int displayCount = Math.min(5, sets.size());
+        for (int i = sets.size() - displayCount; i < sets.size(); i++) {
+            WorkoutSet set = sets.get(i);
+            display.append(String.format("• %s: %d reps @ %.0f lbs\n",
+                    set.getExercise().getName(), set.getReps(), set.getWeight()));
+        }
+
+        currentWorkoutStatsLabel.setText(display.toString());
+    }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         dbHelper = DatabaseHelper.getInstance();
         sessionManager = SessionManager.getInstance();
         exercises = FXCollections.observableArrayList();
-
+        loadExerciseDatabase();
         // Initialize all tabs
         initializeHomeTab();
         initializeMuscleMapTab();
         initializeWorkoutTab();
         initializeProgressTab();
-        loadExerciseDatabase();
-
         // LOGOUT BUTTON STYLING
         if (logoutButton != null) {
             logoutButton.setStyle(
@@ -445,50 +624,80 @@ public class MainController implements Initializable {
                 "Push Day", "Pull Day", "Leg Day", "Upper Body", "Full Body", "Custom"
         ));
 
-        // FIXED START WORKOUT BUTTON - MAXIMUM VISIBILITY
+        // ✅ CRITICAL FIX - Initialize exercise combo box with exercises from database
+        if (exerciseComboBox != null && exercises != null && !exercises.isEmpty()) {
+            exerciseComboBox.setItems(exercises); // Use the loaded exercises
+
+            // Custom cell factory for display
+            exerciseComboBox.setCellFactory(param -> new ListCell<Exercise>() {
+                @Override
+                protected void updateItem(Exercise item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                    } else {
+                        setText(item.getName());
+                    }
+                }
+            });
+
+            exerciseComboBox.setButtonCell(new ListCell<Exercise>() {
+                @Override
+                protected void updateItem(Exercise item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText("Select exercise...");
+                    } else {
+                        setText(item.getName());
+                    }
+                }
+            });
+
+            System.out.println("✅ Exercise ComboBox loaded with " + exercises.size() + " exercises");
+        } else {
+            System.err.println("❌ ERROR: exercises list is null or empty!");
+        }
+
+        // Button styling
         startWorkoutBtn.setStyle(
-                "-fx-background-color: linear-gradient(to right, #00d4ff, #00a0cc); " +
-                        "-fx-text-fill: #FFFFFF; " +  // WHITE TEXT
-                        "-fx-font-size: 18px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-padding: 14px 28px; " +
-                        "-fx-background-radius: 12px; " +
-                        "-fx-border-color: #FFFFFF; " +
-                        "-fx-border-width: 2px; " +
-                        "-fx-border-radius: 12px; " +
-                        "-fx-cursor: hand; " +
+                "-fx-background-color: linear-gradient(to right, #00d4ff, #00a0cc);" +
+                        "-fx-text-fill: #FFFFFF;" +
+                        "-fx-font-size: 18px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 14px 28px;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-border-color: #FFFFFF;" +
+                        "-fx-border-width: 2px;" +
+                        "-fx-border-radius: 12px;" +
+                        "-fx-cursor: hand;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 12, 0, 0, 6);"
         );
 
-        // FIXED END WORKOUT BUTTON - MAXIMUM VISIBILITY
         endWorkoutBtn.setStyle(
-                "-fx-background-color: linear-gradient(to right, #ff5555, #ff3333); " +
-                        "-fx-text-fill: #FFFFFF; " +  // WHITE TEXT
-                        "-fx-font-size: 18px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-padding: 14px 28px; " +
-                        "-fx-background-radius: 12px; " +
-                        "-fx-border-color: #FFFFFF; " +
-                        "-fx-border-width: 2px; " +
-                        "-fx-border-radius: 12px; " +
-                        "-fx-cursor: hand; " +
+                "-fx-background-color: linear-gradient(to right, #ff5555, #ff3333);" +
+                        "-fx-text-fill: #FFFFFF;" +
+                        "-fx-font-size: 18px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 14px 28px;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-border-color: #FFFFFF;" +
+                        "-fx-border-width: 2px;" +
+                        "-fx-border-radius: 12px;" +
+                        "-fx-cursor: hand;" +
                         "-fx-effect: dropshadow(gaussian, rgba(255,85,85,0.6), 12, 0, 0, 6);"
         );
 
-        startWorkoutBtn.setOnAction(e -> startWorkout());
-        endWorkoutBtn.setOnAction(e -> endWorkout());
         endWorkoutBtn.setDisable(true);
 
-        workoutTimerLabel.setText("⏱️ Ready to start your workout!");
-        workoutTimerLabel.setStyle(
-                "-fx-text-fill: #FFFFFF; " +  // WHITE TEXT
-                        "-fx-font-size: 20px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
-        );
+        if (workoutTimerLabel != null) {
+            workoutTimerLabel.setText("⏱️ Timer: 00:00:00");
+        }
 
-        UIStyler.styleComboBox(routineSelector);
+        if (currentWorkoutStatsLabel != null) {
+            currentWorkoutStatsLabel.setText("Start a workout to begin logging!");
+        }
     }
+
 
 
     private void initializeProgressTab() {
@@ -1144,32 +1353,6 @@ public class MainController implements Initializable {
         loadWorkoutExercises();
 
         showAlert("Workout started! 💪\nLog your sets below.", Alert.AlertType.INFORMATION);
-    }
-    private void startWorkoutTimer() {
-        // Stop existing timer if any
-        if (workoutTimer != null) {
-            workoutTimer.stop();
-        }
-
-        // Create new timer that updates every second
-        workoutTimer = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> {
-                    long elapsedSeconds = (System.currentTimeMillis() - workoutStartTime) / 1000;
-                    long minutes = elapsedSeconds / 60;
-                    long seconds = elapsedSeconds % 60;
-
-                    workoutTimerLabel.setText(String.format("⏱️ Workout in progress: %02d:%02d", minutes, seconds));
-                    workoutTimerLabel.setStyle(
-                            "-fx-text-fill: #00f5ff; " +
-                                    "-fx-font-size: 20px; " +
-                                    "-fx-font-weight: bold; " +
-                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
-                    );
-                })
-        );
-
-        workoutTimer.setCycleCount(javafx.animation.Timeline.INDEFINITE);
-        workoutTimer.play();
     }
 
 
