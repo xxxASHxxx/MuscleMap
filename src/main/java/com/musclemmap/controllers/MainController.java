@@ -8,18 +8,35 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+import javafx.scene.chart.AreaChart;
+import javafx.scene.shape.QuadCurve;
+import javafx.scene.shape.CubicCurveTo;
+import javafx.scene.shape.MoveTo;
+import javafx.scene.shape.LineTo;
+import javafx.scene.shape.Path;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Polygon;
+import javafx.scene.paint.Color;
+import java.util.LinkedHashMap;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.concurrent.Task;
+import java.net.URL;
+
+import javafx.scene.layout.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import com.musclemmap.models.*;
 import com.musclemmap.utils.DatabaseHelper;
 import com.musclemmap.utils.UIStyler;
-import javafx.scene.control.*;
-import java.net.URL;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -147,13 +164,25 @@ public class MainController implements Initializable {
     private Pane muscleMapPane;
     // Progress Tab fields (from main.fxml)
     @FXML private ComboBox<String> exerciseFilterCombo;
+    @FXML private VBox progressStatsContainer;
     @FXML private DatePicker fromDatePicker;
     @FXML private DatePicker toDatePicker;
+    // ========== HOME TAB ENHANCED FIELDS ==========
+    @FXML private Label motivationLabel;
+    @FXML private HBox achievementsBox;
+    @FXML private VBox statsCardsContainer;
+
     @FXML private VBox progressChartsBox;
     @FXML
     private ListView<Exercise> exerciseListView;
     @FXML
     private Label selectedMuscleLabel;
+    // Exercise Image Display
+    @FXML private ImageView exerciseImageView;
+    @FXML private VBox imagePlaceholder;
+    @FXML private VBox imageLoadingIndicator;
+    @FXML private StackPane exerciseImageContainer;
+
     @FXML
     private TextArea exerciseDescriptionArea;
 
@@ -162,6 +191,23 @@ public class MainController implements Initializable {
     private ComboBox<String> routineSelector;
     @FXML
     private Button startWorkoutBtn, endWorkoutBtn;
+    // ========== PROGRESS TAB FIELDS ==========
+    @FXML private Button refreshProgressButton;
+    @FXML private LineChart<String, Number> volumeChart;
+    @FXML private BarChart<String, Number> exerciseChart;
+    @FXML private AreaChart<String, Number> progressChart;
+    @FXML private VBox personalRecordsContainer;
+    @FXML private TableView<ProgressController.PersonalRecordEntry> prTableView;
+    @FXML private TableColumn<ProgressController.PersonalRecordEntry, String> exerciseColumn;
+    @FXML private TableColumn<ProgressController.PersonalRecordEntry, String> weightColumn;
+    @FXML private TableColumn<ProgressController.PersonalRecordEntry, String> dateColumn;
+    @FXML private VBox bodyMetricsContainer;
+    // Quick Action Cards
+    @FXML private VBox quickSetCard;
+    @FXML private VBox progressCard;
+    @FXML private VBox muscleMapCard;
+
+
     @FXML
     private Label workoutTimerLabel;
     @FXML
@@ -298,6 +344,7 @@ public class MainController implements Initializable {
         sessionManager = SessionManager.getInstance();
         exercises = FXCollections.observableArrayList();
         loadExerciseDatabase();
+        verifyDatabaseExercises();
         // Initialize all tabs
         initializeHomeTab();
         initializeMuscleMapTab();
@@ -374,16 +421,12 @@ public class MainController implements Initializable {
             });
 
         }
-        // ✅ ADD THIS AT THE END - Initialize Progress Controller
-        progressController = new ProgressController();
-        progressController.initializeComponents(
-                this.progressChartsBox,
-                this.exerciseFilterCombo,
-                this.fromDatePicker,
-                this.toDatePicker);
+
+        if (progressController != null) {
+            System.out.println("✅ ProgressController loaded from FXML");
+        }
+
     }
-
-
 
     /**
      * Load the ProgressController dynamically
@@ -451,14 +494,36 @@ public class MainController implements Initializable {
     }
 
     private void loadUserWorkouts() {
-        if (currentUser != null && currentUser.getId() != null) {
-            // NEW
-            List<Workout> workouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
-
-
-            displayRecentWorkouts(workouts);
+        if (currentUser == null) {
+            System.out.println("⚠️ No user logged in");
+            return;
         }
+
+        System.out.println("📊 Loading user workouts for: " + currentUser.getUsername());
+
+        // Update welcome label
+        if (welcomeLabel != null) {
+            LocalDateTime now = LocalDateTime.now();
+            int hour = now.getHour();
+            String greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+            welcomeLabel.setText(greeting + ", " + currentUser.getUsername() + "! 💪");
+        }
+
+        // Load workouts
+        List<Workout> workouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
+        System.out.println("✅ Loaded " + workouts.size() + " workouts");
+
+        // Display recent workouts
+        displayRecentWorkouts(workouts);
+
+        // Update stats cards
+        updateStatsCards(workouts);
+
+        // Display achievements
+        displayAchievements(workouts);
     }
+
+
 
     private void updateUserStats() {
         if (currentUser != null) {
@@ -478,36 +543,6 @@ public class MainController implements Initializable {
         }
     }
 
-    private void displayRecentWorkouts(List<Workout> workouts) {
-        recentWorkoutsBox.getChildren().clear();
-
-        if (workouts.isEmpty()) {
-            Label noWorkoutsLabel = new Label("No workouts yet. Start your first workout! 💪");
-            noWorkoutsLabel.setStyle("-fx-text-fill: #e0e0e0; -fx-font-size: 14px; -fx-padding: 8px;");
-            recentWorkoutsBox.getChildren().add(noWorkoutsLabel);
-            return;
-        }
-
-        workouts.sort((w1, w2) -> w2.getStartTime().compareTo(w1.getStartTime()));
-
-        int count = 0;
-        for (Workout workout : workouts) {
-            if (count >= 4) break;
-
-            String duration = workout.getFormattedDuration();
-            String timeAgo = getTimeAgo(workout.getStartTime());
-
-            Label workoutLabel = new Label(
-                    "💪 " + workout.getName() + " - " + duration + " - " + timeAgo
-            );
-            workoutLabel.setStyle("-fx-text-fill: #e0e0e0; -fx-font-size: 14px; -fx-padding: 8px; " +
-                    "-fx-background-color: #3a3a3a; -fx-background-radius: 8px; " +
-                    "-fx-border-color: #555555; -fx-border-radius: 8px;");
-            VBox.setMargin(workoutLabel, new Insets(2));
-            recentWorkoutsBox.getChildren().add(workoutLabel);
-            count++;
-        }
-    }
 
     private String getTimeAgo(LocalDateTime dateTime) {
         long days = java.time.Duration.between(dateTime, LocalDateTime.now()).toDays();
@@ -517,29 +552,61 @@ public class MainController implements Initializable {
     }
 
     private void initializeHomeTab() {
+        System.out.println("🏠 Initializing Enhanced Home Tab");
+
+        // Dynamic greeting based on time of day
         if (currentUser != null) {
-            welcomeLabel.setText("Welcome back, " + currentUser.getUsername() + "! 💪");
+            LocalDateTime now = LocalDateTime.now();
+            int hour = now.getHour();
+            String greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+            welcomeLabel.setText(greeting + ", " + currentUser.getUsername() + "! 💪");
         } else {
             welcomeLabel.setText("Welcome to MuscleMap! 💪");
         }
 
-        streakLabel.setText("Current Streak: 7 days 🔥");
-        lastWorkoutLabel.setText("Last Workout: " + LocalDate.now().minusDays(1).format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + " 🚀");
+        // Calculate and display actual streak
+        if (currentUser != null) {
+            List<Workout> workouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
+            int streak = calculateCurrentStreak(workouts);
+            streakLabel.setText("Current Streak: " + streak + " days 🔥");
 
+            // Show last workout date
+            if (!workouts.isEmpty()) {
+                Workout lastWorkout = workouts.stream()
+                        .max(Comparator.comparing(Workout::getStartTime))
+                        .orElse(null);
+                if (lastWorkout != null) {
+                    String lastDate = lastWorkout.getStartTime().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                    lastWorkoutLabel.setText("Last Workout: " + lastDate);
+                } else {
+                    lastWorkoutLabel.setText("No workouts yet - Start today! 🚀");
+                }
+            } else {
+                lastWorkoutLabel.setText("No workouts yet - Start today! 🚀");
+            }
+        } else {
+            streakLabel.setText("Current Streak: 0 days 🔥");
+            lastWorkoutLabel.setText("Start your fitness journey today! 🚀");
+        }
+
+        // Load recent workouts
         loadRecentWorkouts();
 
-        // FIXED START QUICK WORKOUT BUTTON - MAXIMUM VISIBILITY
+        // Display motivation quote
+        displayMotivationQuote();
+
+        // ENHANCED START QUICK WORKOUT BUTTON
         if (startQuickWorkoutBtn != null) {
             startQuickWorkoutBtn.setStyle(
                     "-fx-background-color: linear-gradient(to right, #00d4ff, #00a0cc); " +
-                            "-fx-text-fill: #FFFFFF; " +  // PURE WHITE TEXT
+                            "-fx-text-fill: #FFFFFF; " +
                             "-fx-font-size: 18px; " +
                             "-fx-font-weight: bold; " +
-                            "-fx-padding: 14px 28px; " +
-                            "-fx-background-radius: 12px; " +
+                            "-fx-padding: 15px 35px; " +
+                            "-fx-background-radius: 15px; " +
                             "-fx-border-color: #FFFFFF; " +
                             "-fx-border-width: 2px; " +
-                            "-fx-border-radius: 12px; " +
+                            "-fx-border-radius: 15px; " +
                             "-fx-cursor: hand; " +
                             "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 12, 0, 0, 6);"
             );
@@ -548,14 +615,14 @@ public class MainController implements Initializable {
             startQuickWorkoutBtn.setOnMouseEntered(e -> {
                 startQuickWorkoutBtn.setStyle(
                         "-fx-background-color: linear-gradient(to right, #00f5ff, #00c4dd); " +
-                                "-fx-text-fill: #000000; " +  // BLACK TEXT ON HOVER
-                                "-fx-font-size: 19px; " +  // SLIGHTLY LARGER
+                                "-fx-text-fill: #000000; " +
+                                "-fx-font-size: 19px; " +
                                 "-fx-font-weight: bold; " +
-                                "-fx-padding: 14px 28px; " +
-                                "-fx-background-radius: 12px; " +
+                                "-fx-padding: 15px 35px; " +
+                                "-fx-background-radius: 15px; " +
                                 "-fx-border-color: #FFFFFF; " +
                                 "-fx-border-width: 3px; " +
-                                "-fx-border-radius: 12px; " +
+                                "-fx-border-radius: 15px; " +
                                 "-fx-cursor: hand; " +
                                 "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.9), 16, 0, 0, 8);"
                 );
@@ -567,52 +634,161 @@ public class MainController implements Initializable {
                                 "-fx-text-fill: #FFFFFF; " +
                                 "-fx-font-size: 18px; " +
                                 "-fx-font-weight: bold; " +
-                                "-fx-padding: 14px 28px; " +
-                                "-fx-background-radius: 12px; " +
+                                "-fx-padding: 15px 35px; " +
+                                "-fx-background-radius: 15px; " +
                                 "-fx-border-color: #FFFFFF; " +
                                 "-fx-border-width: 2px; " +
-                                "-fx-border-radius: 12px; " +
+                                "-fx-border-radius: 15px; " +
                                 "-fx-cursor: hand; " +
                                 "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 12, 0, 0, 6);"
                 );
             });
 
-            startQuickWorkoutBtn.setOnAction(e -> startQuickWorkout());
+            startQuickWorkoutBtn.setOnAction(e -> {
+                // Switch to workout tab and start workout
+                mainTabPane.getSelectionModel().select(workoutTab);
+                handleStartWorkout();
+            });
+        }
+        // Setup Quick Action Card Hover Effects
+
+
+        System.out.println("✅ Home tab initialized successfully");
+        setupQuickActionHoverEffects();
+    }
+    private void setupQuickActionHoverEffects() {
+        // Quick Set Card
+        if (quickSetCard != null) {
+            quickSetCard.setOnMouseEntered(e -> {
+                quickSetCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #ff6ec7 0%, #ff3d5c 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(255,110,199,0.9), 30, 0, 0, 12);" +
+                                "-fx-border-color: rgba(255,255,255,0.6); -fx-border-width: 3px; -fx-border-radius: 25px;" +
+                                "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"
+                );
+            });
+
+            quickSetCard.setOnMouseExited(e -> {
+                quickSetCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(240,147,251,0.6), 20, 0, 0, 10);" +
+                                "-fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;"
+                );
+            });
+        }
+
+        // Progress Card
+        if (progressCard != null) {
+            progressCard.setOnMouseEntered(e -> {
+                progressCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #00d4ff 0%, #00c6ff 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.9), 30, 0, 0, 12);" +
+                                "-fx-border-color: rgba(255,255,255,0.6); -fx-border-width: 3px; -fx-border-radius: 25px;" +
+                                "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"
+                );
+            });
+
+            progressCard.setOnMouseExited(e -> {
+                progressCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(79,172,254,0.6), 20, 0, 0, 10);" +
+                                "-fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;"
+                );
+            });
+        }
+
+        // Muscle Map Card
+        if (muscleMapCard != null) {
+            muscleMapCard.setOnMouseEntered(e -> {
+                muscleMapCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #ff8fb3 0%, #ffd700 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(255,143,179,0.9), 30, 0, 0, 12);" +
+                                "-fx-border-color: rgba(255,255,255,0.6); -fx-border-width: 3px; -fx-border-radius: 25px;" +
+                                "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"
+                );
+            });
+
+            muscleMapCard.setOnMouseExited(e -> {
+                muscleMapCard.setStyle(
+                        "-fx-background-color: linear-gradient(135deg, #fa709a 0%, #fee140 100%);" +
+                                "-fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;" +
+                                "-fx-effect: dropshadow(gaussian, rgba(250,112,154,0.6), 20, 0, 0, 10);" +
+                                "-fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;"
+                );
+            });
+        }
+    }
+
+    @FXML
+    private void handleMuscleMapClick() {
+        System.out.println("🗺️ Switching to Muscle Map tab");
+
+        if (mainTabPane != null && muscleMapTab != null) {
+            mainTabPane.getSelectionModel().select(muscleMapTab);
         }
     }
 
 
     private void initializeMuscleMapTab() {
-        selectedMuscleLabel.setText("🎯 Click on a muscle group to see exercises");
-        selectedMuscleLabel.setStyle(
-                "-fx-text-fill: #FFFFFF; " +
-                        "-fx-font-size: 18px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
-        );
+        System.out.println("🗺️ Initializing Muscle Map Tab");
 
-        exerciseDescriptionArea.setEditable(false);
-        UIStyler.styleTextArea(exerciseDescriptionArea);
+        // Setup header label with cyan styling
+        if (selectedMuscleLabel != null) {
+            selectedMuscleLabel.setText("🎯 Click on a muscle group to see exercises");
+            selectedMuscleLabel.setStyle(
+                    "-fx-font-size: 20px; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-text-fill: #00d4ff; " +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 4, 0, 0, 2);"
+            );
+        }
 
+        // Setup exercise description area with UIStyler
+        if (exerciseDescriptionArea != null) {
+            exerciseDescriptionArea.setEditable(false);
+            exerciseDescriptionArea.setWrapText(true);
+            UIStyler.styleTextArea(exerciseDescriptionArea);
+        }
+
+        // Create the interactive muscle map with all muscle regions
         createMuscleMap();
 
-        exerciseListView.setCellFactory(listView -> new ExerciseListCell());
+        // Setup exercise list view with complete functionality
+        if (exerciseListView != null) {
+            // Set custom cell factory for beautifully styled exercise cells
+            exerciseListView.setCellFactory(listView -> new ExerciseListCell());
 
-        // FIXED LISTVIEW BACKGROUND - DARK WITH PROPER STYLING
-        exerciseListView.setStyle(
-                "-fx-background-color: #0a0a0a; " +  // VERY DARK BACKGROUND
-                        "-fx-border-color: #00f5ff; " +
-                        "-fx-border-width: 2px; " +
-                        "-fx-border-radius: 12px; " +
-                        "-fx-background-radius: 12px; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.3), 12, 0, 0, 6);"
-        );
+            // Set preferred height for scrollable list
+            exerciseListView.setPrefHeight(240);
 
-        exerciseListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            if (newSelection != null) {
-                showExerciseDetails(newSelection);
-            }
-        });
+            // Apply enhanced dark theme styling with cyan borders and glow effect
+            exerciseListView.setStyle(
+                    "-fx-background-color: #1f1f1f; " +              // Outer dark background
+                            "-fx-control-inner-background: #2b2b2b; " +      // Inner dark background for cells
+                            "-fx-border-color: #00d4ff; " +                  // Cyan border matching app theme
+                            "-fx-border-radius: 10px; " +                    // Rounded corners
+                            "-fx-background-radius: 10px; " +                // Match border radius
+                            "-fx-border-width: 2px; " +                      // Medium border width
+                            "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 10, 0, 0, 5);"  // Cyan glow effect
+            );
+
+            // ✅ FIXED: Add selection listener that calls handleExerciseSelection()
+            exerciseListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+                if (newSelection != null) {
+                    System.out.println("📋 Exercise selected from list: " + newSelection.getName());
+                    handleExerciseSelection(newSelection);  // ✅ Use the dedicated method
+                }
+            });
+
+            System.out.println("✅ Exercise ListView configured with enhanced styling");
+        }
+
+        System.out.println("✅ Muscle Map tab fully initialized and ready");
     }
 
 
@@ -657,7 +833,17 @@ public class MainController implements Initializable {
         } else {
             System.err.println("❌ ERROR: exercises list is null or empty!");
         }
+        createMuscleMap();
 
+        // Exercise list selection handler
+        if (exerciseListView != null) {
+            exerciseListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null) {
+                    displayExerciseDetails(newVal);
+                    loadExerciseImage(newVal); // ✅ NEW: Load image when exercise selected
+                }
+            });
+        }
         // Button styling
         startWorkoutBtn.setStyle(
                 "-fx-background-color: linear-gradient(to right, #00d4ff, #00a0cc);" +
@@ -698,6 +884,11 @@ public class MainController implements Initializable {
         }
     }
 
+    @FXML
+    private void handleRefreshProgress() {
+        System.out.println("🔄 Manual refresh triggered");
+        loadProgressCharts();
+    }
 
 
     private void initializeProgressTab() {
@@ -711,28 +902,38 @@ public class MainController implements Initializable {
             toDatePicker.setValue(LocalDate.now());
         }
 
-        // Add listeners for date changes
+        // Setup exercise filter
+        if (exerciseFilterCombo != null) {
+            List<Exercise> exercises = dbHelper.getAllExercises();
+            exerciseFilterCombo.getItems().add("All Exercises");
+            exercises.forEach(ex -> exerciseFilterCombo.getItems().add(ex.getName()));
+            exerciseFilterCombo.setValue("All Exercises");
+
+            // Add listener
+            exerciseFilterCombo.setOnAction(e -> loadProgressCharts());
+        }
+
+        // Setup date picker listeners
         if (fromDatePicker != null) {
-            fromDatePicker.setOnAction(e -> {
-                System.out.println("📅 From date changed");
-                loadProgressCharts();
-            });
+            fromDatePicker.setOnAction(e -> loadProgressCharts());
         }
         if (toDatePicker != null) {
-            toDatePicker.setOnAction(e -> {
-                System.out.println("📅 To date changed");
-                loadProgressCharts();
-            });
+            toDatePicker.setOnAction(e -> loadProgressCharts());
         }
 
-        // Initialize exercise filter combo
-        if (exerciseFilterCombo != null) {
-            exerciseFilterCombo.getItems().add("All Exercises");
-            exerciseFilterCombo.setValue("All Exercises");
+        // Setup table columns
+        if (prTableView != null && exerciseColumn != null && weightColumn != null && dateColumn != null) {
+            exerciseColumn.setCellValueFactory(cellData ->
+                    new javafx.beans.property.SimpleStringProperty(cellData.getValue().getExercise()));
+            weightColumn.setCellValueFactory(cellData ->
+                    new javafx.beans.property.SimpleStringProperty(cellData.getValue().getWeight()));
+            dateColumn.setCellValueFactory(cellData ->
+                    new javafx.beans.property.SimpleStringProperty(cellData.getValue().getDate()));
         }
 
-        System.out.println("✅ Progress tab initialized successfully");
+        System.out.println("✅ Progress tab initialized");
     }
+
 
     // In MainController.java - Add this to your workout completion method
     // In MainController.java - Add this to your workout completion method
@@ -835,93 +1036,325 @@ public class MainController implements Initializable {
     }
 
     private void createMuscleMap() {
-        muscleMapPane.setPrefSize(700, 800);
+        System.out.println("🗺️ Creating anatomical muscle map...");
 
-        // Premium dark gradient background
-        muscleMapPane.setStyle(
-                "-fx-background-color: " +
-                        "radial-gradient(center 50% 40%, radius 80%, " +
-                        "rgba(10, 15, 25, 1) 0%, " +
-                        "rgba(5, 8, 15, 1) 70%, " +
-                        "rgba(2, 5, 10, 1) 100%); " +
-                        "-fx-background-radius: 30px; " +
-                        "-fx-border-color: linear-gradient(to right, #00f5ff, #ff6b6b, #4ecdc4); " +
-                        "-fx-border-width: 2px; " +
-                        "-fx-border-radius: 30px; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.9), 25, 0, 0, 10);"
+        if (muscleMapPane == null) {
+            System.err.println("❌ muscleMapPane is null!");
+            return;
+        }
+
+        muscleMapPane.getChildren().clear();
+
+        // LAYER 1: Background body outline
+        createRealisticBodyOutline(muscleMapPane);
+
+        // LAYER 2: Back muscles (deepest)
+        addMuscleRegion(muscleMapPane, "Back", 238, 218, 48, 92, "#FF5722", 1);
+        addMuscleRegion(muscleMapPane, "Back", 364, 218, 48, 92, "#FF5722", 1);
+        addMuscleRegion(muscleMapPane, "Lower Back", 282, 348, 86, 58, "#FF6F00", 1);
+
+        // LAYER 3: Core muscles
+        addMuscleRegion(muscleMapPane, "Abs", 297, 272, 56, 102, "#4CAF50", 2);
+        addMuscleRegion(muscleMapPane, "Obliques", 262, 282, 28, 82, "#8BC34A", 2);
+        addMuscleRegion(muscleMapPane, "Obliques", 360, 282, 28, 82, "#8BC34A", 2);
+
+        // LAYER 4: Chest muscles
+        addMuscleRegion(muscleMapPane, "Chest", 258, 182, 40, 70, "#E91E63", 3);
+        addMuscleRegion(muscleMapPane, "Chest", 352, 182, 40, 70, "#E91E63", 3);
+
+        // LAYER 5: Shoulder muscles
+        addMuscleRegion(muscleMapPane, "Shoulders", 228, 145, 65, 60, "#9C27B0", 4);
+        addMuscleRegion(muscleMapPane, "Shoulders", 357, 145, 65, 60, "#9C27B0", 4);
+
+        // LAYER 6: Neck
+        addMuscleRegion(muscleMapPane, "Neck", 307, 98, 36, 40, "#9C27B0", 5);
+
+        // LAYER 7: Glutes
+        addMuscleRegion(muscleMapPane, "Glutes", 282, 412, 86, 68, "#F44336", 3);
+
+        // LAYER 8: Upper legs
+        addMuscleRegion(muscleMapPane, "Quadriceps", 272, 492, 40, 122, "#FFC107", 4);
+        addMuscleRegion(muscleMapPane, "Quadriceps", 338, 492, 40, 122, "#FFC107", 4);
+        addMuscleRegion(muscleMapPane, "Hamstrings", 272, 502, 40, 112, "#FF9800", 3);
+        addMuscleRegion(muscleMapPane, "Hamstrings", 338, 502, 40, 112, "#FF9800", 3);
+
+        // LAYER 9: Lower legs
+        addMuscleRegion(muscleMapPane, "Calves", 277, 632, 31, 82, "#795548", 5);
+        addMuscleRegion(muscleMapPane, "Calves", 342, 632, 31, 82, "#795548", 5);
+
+        // LAYER 10: Triceps (WIDER SPACING - moved out)
+        addMuscleRegion(muscleMapPane, "Triceps", 185, 212, 30, 73, "#00BCD4", 6);
+        addMuscleRegion(muscleMapPane, "Triceps", 435, 212, 30, 73, "#00BCD4", 6);
+
+        // LAYER 11: Biceps (SIDE BY SIDE with triceps, not overlapping)
+        addMuscleRegion(muscleMapPane, "Biceps", 218, 208, 30, 76, "#2196F3", 7);
+        addMuscleRegion(muscleMapPane, "Biceps", 402, 208, 30, 76, "#2196F3", 7);
+
+        // LAYER 12: Forearms (top layer for arms)
+        addMuscleRegion(muscleMapPane, "Forearms", 188, 290, 24, 66, "#03A9F4", 8);
+        addMuscleRegion(muscleMapPane, "Forearms", 438, 290, 24, 66, "#03A9F4", 8);
+
+        System.out.println("✅ Muscle map created with proper spacing");
+    }
+
+    // Helper method to add muscle region with proper layering
+    private void addMuscleRegion(Pane pane, String muscleName, double x, double y, double width, double height, String color, int layer) {
+        Rectangle muscleShape = new Rectangle(x, y, width, height);
+        muscleShape.setFill(Color.web(color).deriveColor(0, 1, 1, 0.80));
+        muscleShape.setStroke(Color.web(color).brighter());
+        muscleShape.setStrokeWidth(2.5);
+        muscleShape.setArcWidth(20);
+        muscleShape.setArcHeight(20);
+        muscleShape.setEffect(new javafx.scene.effect.DropShadow(8, Color.BLACK));
+        muscleShape.setCursor(javafx.scene.Cursor.HAND);
+
+        // Set Z-order for proper layering
+        muscleShape.setViewOrder(-layer);
+
+        // Hover effects
+        muscleShape.setOnMouseEntered(e -> {
+            muscleShape.setFill(Color.web(color).brighter().brighter());
+            muscleShape.setScaleX(1.08);
+            muscleShape.setScaleY(1.08);
+            muscleShape.setEffect(new javafx.scene.effect.DropShadow(18, Color.web(color)));
+        });
+
+        muscleShape.setOnMouseExited(e -> {
+            muscleShape.setFill(Color.web(color).deriveColor(0, 1, 1, 0.80));
+            muscleShape.setScaleX(1.0);
+            muscleShape.setScaleY(1.0);
+            muscleShape.setEffect(new javafx.scene.effect.DropShadow(8, Color.BLACK));
+        });
+
+        muscleShape.setOnMouseClicked(e -> handleMuscleClick(muscleName));
+
+        pane.getChildren().add(muscleShape);
+
+        // Add label with proper visibility
+        Label label = new Label(getMuscleEmoji(muscleName));
+        label.setLayoutX(x + width / 2 - 12);
+        label.setLayoutY(y + height / 2 - 12);
+        label.setStyle("-fx-font-size: 20px; -fx-text-fill: white; -fx-font-weight: bold; " +
+                "-fx-effect: dropshadow(gaussian, black, 4, 0, 0, 2);");
+        label.setMouseTransparent(true);
+        label.setViewOrder(-layer - 1); // Labels always on top of their muscle
+        pane.getChildren().add(label);
+    }
+
+    // Create realistic body outline with better visibility
+    private void createRealisticBodyOutline(Pane pane) {
+        // Head circle - MORE VISIBLE
+        Circle head = new Circle(325, 75, 40);
+        head.setFill(Color.TRANSPARENT);
+        head.setStroke(Color.web("#808080"));
+        head.setStrokeWidth(3);
+        pane.getChildren().add(head);
+
+        // Neck trapezoid
+        Polygon neck = new Polygon();
+        neck.getPoints().addAll(
+                310.0, 115.0,
+                340.0, 115.0,
+                348.0, 140.0,
+                302.0, 140.0
         );
+        neck.setFill(Color.TRANSPARENT);
+        neck.setStroke(Color.web("#808080"));
+        neck.setStrokeWidth(3);
+        pane.getChildren().add(neck);
 
-        // Futuristic title with neon effect
-        Label titleLabel = new Label("⚡ HEXAGONAL MUSCLE ATLAS");
-        titleLabel.setLayoutX(150);
-        titleLabel.setLayoutY(25);
-        titleLabel.setStyle(
-                "-fx-text-fill: linear-gradient(to right, #00f5ff, #ff6b6b); " +
-                        "-fx-font-size: 28px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.8), 8, 0, 0, 0);"
+        // Torso outline - CURVED and VISIBLE
+        Path torsoPath = new Path();
+        MoveTo moveTo = new MoveTo(228, 158);
+
+        CubicCurveTo leftSide = new CubicCurveTo();
+        leftSide.setControlX1(222);
+        leftSide.setControlY1(275);
+        leftSide.setControlX2(232);
+        leftSide.setControlY2(395);
+        leftSide.setX(278);
+        leftSide.setY(413);
+
+        LineTo bottomLine = new LineTo(372, 413);
+
+        CubicCurveTo rightSide = new CubicCurveTo();
+        rightSide.setControlX1(418);
+        rightSide.setControlY1(395);
+        rightSide.setControlX2(428);
+        rightSide.setControlY2(275);
+        rightSide.setX(422);
+        rightSide.setY(158);
+
+        LineTo topLine = new LineTo(228, 158);
+
+        torsoPath.getElements().addAll(moveTo, leftSide, bottomLine, rightSide, topLine);
+        torsoPath.setFill(Color.TRANSPARENT);
+        torsoPath.setStroke(Color.web("#808080"));
+        torsoPath.setStrokeWidth(3);
+        pane.getChildren().add(torsoPath);
+
+        // Arms - VISIBLE CURVES
+        QuadCurve leftArm = new QuadCurve();
+        leftArm.setStartX(223);
+        leftArm.setStartY(158);
+        leftArm.setEndX(193);
+        leftArm.setEndY(365);
+        leftArm.setControlX(202);
+        leftArm.setControlY(255);
+        leftArm.setFill(Color.TRANSPARENT);
+        leftArm.setStroke(Color.web("#808080"));
+        leftArm.setStrokeWidth(3);
+        pane.getChildren().add(leftArm);
+
+        QuadCurve rightArm = new QuadCurve();
+        rightArm.setStartX(427);
+        rightArm.setStartY(158);
+        rightArm.setEndX(457);
+        rightArm.setEndY(365);
+        rightArm.setControlX(448);
+        rightArm.setControlY(255);
+        rightArm.setFill(Color.TRANSPARENT);
+        rightArm.setStroke(Color.web("#808080"));
+        rightArm.setStrokeWidth(3);
+        pane.getChildren().add(rightArm);
+
+        // Legs - TAPERED SHAPE
+        QuadCurve leftLeg = new QuadCurve();
+        leftLeg.setStartX(283);
+        leftLeg.setStartY(413);
+        leftLeg.setEndX(288);
+        leftLeg.setEndY(720);
+        leftLeg.setControlX(278);
+        leftLeg.setControlY(560);
+        leftLeg.setFill(Color.TRANSPARENT);
+        leftLeg.setStroke(Color.web("#808080"));
+        leftLeg.setStrokeWidth(3);
+        pane.getChildren().add(leftLeg);
+
+        QuadCurve rightLeg = new QuadCurve();
+        rightLeg.setStartX(367);
+        rightLeg.setStartY(413);
+        rightLeg.setEndX(362);
+        rightLeg.setEndY(720);
+        rightLeg.setControlX(372);
+        rightLeg.setControlY(560);
+        rightLeg.setFill(Color.TRANSPARENT);
+        rightLeg.setStroke(Color.web("#808080"));
+        rightLeg.setStrokeWidth(3);
+        pane.getChildren().add(rightLeg);
+    }
+    // Create curved muscle shape for organic look
+    private Rectangle createCurvedMuscleShape(MuscleMapRegion region) {
+        Rectangle rect = new Rectangle(region.x, region.y, region.width, region.height);
+        rect.setFill(Color.web(region.color).deriveColor(0, 1, 1, 0.75));
+        rect.setStroke(Color.web(region.color).brighter());
+        rect.setStrokeWidth(2.5);
+        rect.setArcWidth(25);  // More curved corners
+        rect.setArcHeight(25);
+        rect.setEffect(new javafx.scene.effect.DropShadow(10, Color.BLACK));
+        rect.setCursor(javafx.scene.Cursor.HAND);
+        return rect;
+    }
+
+
+    // Helper method to create body outline
+    private void createBodyOutline(Pane pane, double width, double height) {
+        // Create simple body silhouette using shapes
+
+        // Head circle
+        Circle head = new Circle(325, 60, 35);
+        head.setFill(Color.TRANSPARENT);
+        head.setStroke(Color.web("#404040"));
+        head.setStrokeWidth(2);
+        pane.getChildren().add(head);
+
+        // Neck line
+        Line neck = new Line(325, 95, 325, 120);
+        neck.setStroke(Color.web("#404040"));
+        neck.setStrokeWidth(3);
+        pane.getChildren().add(neck);
+
+        // Torso outline (body shape)
+        Polygon torso = new Polygon();
+        torso.getPoints().addAll(
+                250.0, 140.0,  // Left shoulder
+                400.0, 140.0,  // Right shoulder
+                420.0, 400.0,  // Right hip
+                230.0, 400.0   // Left hip
         );
-        muscleMapPane.getChildren().add(titleLabel);
+        torso.setFill(Color.TRANSPARENT);
+        torso.setStroke(Color.web("#404040"));
+        torso.setStrokeWidth(2);
+        pane.getChildren().add(torso);
 
-        // Modern subtitle
-        Label subtitleLabel = new Label("🎯 Interactive Hexagonal Body Mapping System");
-        subtitleLabel.setLayoutX(180);
-        subtitleLabel.setLayoutY(60);
-        subtitleLabel.setStyle(
-                "-fx-text-fill: #FFFFFF; " +
-                        "-fx-font-size: 16px; " +
-                        "-fx-font-style: italic; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 4, 0, 0, 2);"
-        );
-        muscleMapPane.getChildren().add(subtitleLabel);
+        // Arms outlines
+        Line leftArm1 = new Line(240, 150, 210, 280);
+        Line leftArm2 = new Line(210, 280, 200, 350);
+        Line rightArm1 = new Line(410, 150, 440, 280);
+        Line rightArm2 = new Line(440, 280, 450, 350);
 
-        // ===== COMPACT HEXAGONAL BODY LAYOUT =====
+        leftArm1.setStroke(Color.web("#404040"));
+        leftArm2.setStroke(Color.web("#404040"));
+        rightArm1.setStroke(Color.web("#404040"));
+        rightArm2.setStroke(Color.web("#404040"));
 
-        // HEAD REGION - Top hexagon
-        createHexagonMuscle("🧠 HEAD", 350, 100, "neck", "#8E24AA", "NEURAL");
+        leftArm1.setStrokeWidth(2);
+        leftArm2.setStrokeWidth(2);
+        rightArm1.setStrokeWidth(2);
+        rightArm2.setStrokeWidth(2);
 
-        // UPPER BODY HEXAGON ROW 1
-        createHexagonMuscle("🤸 SHOULDERS", 220, 150, "shoulders", "#FF9800", "DELTOID");
-        createHexagonMuscle("💪 TRAPS", 350, 150, "traps", "#5E35B1", "TRAPEZIUS");
-        createHexagonMuscle("🏋️ UPPER BACK", 480, 150, "back", "#7B1FA2", "RHOMBOID");
+        pane.getChildren().addAll(leftArm1, leftArm2, rightArm1, rightArm2);
 
-        // UPPER BODY HEXAGON ROW 2
-        createHexagonMuscle("💪 BICEPS", 150, 210, "biceps", "#4CAF50", "BRACHII");
-        createHexagonMuscle("❤️ CHEST", 270, 210, "chest", "#E53935", "PECTORAL");
-        createHexagonMuscle("🏋️ LATS", 430, 210, "back", "#8E24AA", "LATISSIMUS");
-        createHexagonMuscle("💪 TRICEPS", 550, 210, "triceps", "#2196F3", "BRACHII");
+        // Legs outlines
+        Line leftLeg1 = new Line(280, 400, 280, 620);
+        Line leftLeg2 = new Line(280, 620, 280, 720);
+        Line rightLeg1 = new Line(370, 400, 370, 620);
+        Line rightLeg2 = new Line(370, 620, 370, 720);
 
-        // MID BODY HEXAGON ROW
-        createHexagonMuscle("⚡ CORE", 270, 270, "abs", "#EC407A", "RECTUS");
-        createHexagonMuscle("⚡ OBLIQUES", 430, 270, "abs", "#F06292", "LATERAL");
+        leftLeg1.setStroke(Color.web("#404040"));
+        leftLeg2.setStroke(Color.web("#404040"));
+        rightLeg1.setStroke(Color.web("#404040"));
+        rightLeg2.setStroke(Color.web("#404040"));
 
-        // LOWER BODY HEXAGON ROW 1
-        createHexagonMuscle("🍑 GLUTES", 350, 330, "glutes", "#607D8B", "MAXIMUS");
+        leftLeg1.setStrokeWidth(3);
+        leftLeg2.setStrokeWidth(2);
+        rightLeg1.setStrokeWidth(3);
+        rightLeg2.setStrokeWidth(2);
 
-        // LOWER BODY HEXAGON ROW 2
-        createHexagonMuscle("🦵 QUADS", 270, 390, "quadriceps", "#FF5722", "FEMORIS");
-        createHexagonMuscle("🦵 HAMSTRINGS", 430, 390, "hamstrings", "#FFC107", "BICEPS");
+        pane.getChildren().addAll(leftLeg1, leftLeg2, rightLeg1, rightLeg2);
+    }
+    // Create muscle shape (rounded rectangle for organic look)
+    private Rectangle createMuscleShape(MuscleMapRegion region) {
+        Rectangle rect = new Rectangle(region.x, region.y, region.width, region.height);
+        rect.setFill(Color.web(region.color).deriveColor(0, 1, 1, 0.7));
+        rect.setStroke(Color.web(region.color));
+        rect.setStrokeWidth(2);
+        rect.setArcWidth(15);  // Rounded corners for organic look
+        rect.setArcHeight(15);
+        rect.setEffect(new javafx.scene.effect.DropShadow(10, Color.BLACK));
+        rect.setCursor(javafx.scene.Cursor.HAND);
+        return rect;
+    }
 
-        // LOWER LEG HEXAGON
-        createHexagonMuscle("🦵 CALVES", 350, 450, "calves", "#8D6E63", "GASTRO");
-
-        // ===== PERFECT POSITIONED INFO PANELS - DO NOT CHANGE =====
-
-        // Left Panel - System Stats - PERFECT POSITION - DO NOT CHANGE
-        VBox leftPanel = createClearPanel(
-                "🔬 SYSTEM ANALYTICS",
-                "• 12 Primary Muscle Groups\n• Hexagonal Mapping System\n• Interactive Neural Network\n• Real-time Exercise Database",
-                30, 500, 300, "#00f5ff"
-        );
-        muscleMapPane.getChildren().add(leftPanel);
-
-        // Right Panel - Training Protocol - PERFECT POSITION - DO NOT CHANGE
-        VBox rightPanel = createClearPanel(
-                "🚀 TRAINING PROTOCOL",
-                "• Hover: View muscle data\n• Click: Access exercise library\n• Progressive overload system\n• Anatomical precision training",
-                370, 500, 300, "#ff6b6b"
-        );
-        muscleMapPane.getChildren().add(rightPanel);
+    // Get emoji for muscle group
+    private String getMuscleEmoji(String muscleName) {
+        return switch (muscleName.toUpperCase()) {
+            case "CHEST" -> "💪";
+            case "BACK" -> "🔱";
+            case "SHOULDERS" -> "🏋️";
+            case "BICEPS" -> "💪";
+            case "TRICEPS" -> "💪";
+            case "FOREARMS" -> "✊";
+            case "ABS" -> "📊";
+            case "OBLIQUES" -> "⚡";
+            case "LOWER BACK" -> "🔱";
+            case "GLUTES" -> "🍑";
+            case "QUADRICEPS" -> "🦵";
+            case "HAMSTRINGS" -> "🦵";
+            case "CALVES" -> "👟";
+            case "NECK" -> "⚡";
+            default -> "💪";
+        };
     }
 
     // ANTI-FLICKER Hexagonal Muscle Button - Smooth and Stable
@@ -1298,6 +1731,7 @@ public class MainController implements Initializable {
         ));
     }
 
+
     private void loadRecentWorkouts() {
         recentWorkoutsBox.getChildren().clear();
 
@@ -1542,179 +1976,49 @@ public class MainController implements Initializable {
 
 
     public void loadProgressCharts() {
-        System.out.println("📊 loadProgressCharts() called");
+        System.out.println("📊 Loading progress charts...");
 
         if (currentUser == null) {
-            System.out.println("⚠️ No current user - showing no data message");
             showNoProgressData();
             return;
         }
 
-        if (progressChartsBox == null) {
-            System.err.println("❌ progressChartsBox is null! FXML injection failed.");
-            return;
-        }
-
-        progressChartsBox.getChildren().clear();
+        // Clear existing data
+        if (statsCardsContainer != null) statsCardsContainer.getChildren().clear();
+        if (volumeChart != null) volumeChart.getData().clear();
+        if (exerciseChart != null) exerciseChart.getData().clear();
+        if (progressChart != null) progressChart.getData().clear();
+        if (personalRecordsContainer != null) personalRecordsContainer.getChildren().clear();
+        if (bodyMetricsContainer != null) bodyMetricsContainer.getChildren().clear();
 
         // Get date range
-        LocalDate fromDate = fromDatePicker != null ? fromDatePicker.getValue() : LocalDate.now().minusMonths(3);
-        LocalDate toDate = toDatePicker != null ? toDatePicker.getValue() : LocalDate.now();
+        LocalDateTime startDate = fromDatePicker.getValue().atStartOfDay();
+        LocalDateTime endDate = toDatePicker.getValue().atTime(23, 59, 59);
 
-        LocalDateTime startDate = fromDate.atStartOfDay();
-        LocalDateTime endDate = toDate.atTime(23, 59, 59);
-
-        System.out.println("🔄 Loading workouts for user ID: " + currentUser.getId());
-        System.out.println("📅 Date range: " + fromDate + " to " + toDate);
-
-        // Load workouts from database
-        List<Workout> allWorkouts = dbHelper.getWorkoutsByUserId(currentUser.getId());
-        System.out.println("📊 Total workouts from DB: " + allWorkouts.size());
-
-        // Filter by date range
-        List<Workout> workouts = allWorkouts.stream()
-                .filter(w -> w.getStartTime().isAfter(startDate) &&
-                        w.getStartTime().isBefore(endDate))
+        // Load workouts
+        List<Workout> workouts = dbHelper.getWorkoutsByUserId(currentUser.getId())
+                .stream()
+                .filter(w -> w.getStartTime().isAfter(startDate) && w.getStartTime().isBefore(endDate))
                 .collect(Collectors.toList());
 
-        System.out.println("📊 Workouts in date range: " + workouts.size());
-
-        // Debug: Show workout details
-        if (!workouts.isEmpty()) {
-            System.out.println("📋 Workout details:");
-            for (Workout w : workouts) {
-                System.out.println("  - " + w.getName() +
-                        " | Date: " + w.getStartTime().toLocalDate() +
-                        " | Sets: " + (w.getSets() != null ? w.getSets().size() : 0) +
-                        " | Volume: " + w.getTotalVolume() + " lbs");
-            }
-        }
+        System.out.println("📊 Loaded " + workouts.size() + " workouts for progress analysis");
 
         if (workouts.isEmpty()) {
             showNoProgressData();
             return;
         }
 
-        // Create progress cards
-        createProgressCards(workouts);
+        // Display all sections
+        displayOverviewStats(workouts);
+        displayVolumeChart(workouts);
+        displayExerciseChart(workouts);
+        displayProgressTimeline(workouts);
+        displayPersonalRecords();
+        displayStrengthProgress(workouts);
+        displayConsistencyStats(workouts);
+
+        System.out.println("✅ Progress charts loaded successfully!");
     }
-
-    private void showNoProgressData() {
-        if (progressChartsBox == null) return;
-
-        VBox noDataCard = createProgressCard(
-                "📊 No Data Yet",
-                "🏋️ Start logging workouts to see progress!\n\n" +
-                        "💪 Complete a workout in the Workout tab\n" +
-                        "📈 Track your strength and volume gains\n" +
-                        "🔥 Build your workout streak!\n\n" +
-                        "⚠️ Make sure to LOG SETS during your workout!",
-                "#FF5722"
-        );
-        progressChartsBox.getChildren().add(noDataCard);
-        System.out.println("📊 Displayed 'No Data Yet' message");
-    }
-
-    private void createProgressCards(List<Workout> workouts) {
-        // Strength Progress Card
-        VBox strengthCard = createStrengthCard(workouts);
-        progressChartsBox.getChildren().add(strengthCard);
-
-        // Volume Progress Card
-        VBox volumeCard = createVolumeCard(workouts);
-        progressChartsBox.getChildren().add(volumeCard);
-
-        // Consistency Card
-        VBox consistencyCard = createConsistencyCard(workouts);
-        progressChartsBox.getChildren().add(consistencyCard);
-
-        // Recent Workouts Card
-        VBox recentCard = createRecentWorkoutsCard(workouts);
-        progressChartsBox.getChildren().add(recentCard);
-
-        System.out.println("✅ Created " + progressChartsBox.getChildren().size() + " progress cards");
-    }
-
-    private VBox createStrengthCard(List<Workout> workouts) {
-        Map<String, Double> maxWeights = new HashMap<>();
-
-        for (Workout workout : workouts) {
-            if (workout.getSets() != null) {
-                for (WorkoutSet set : workout.getSets()) {
-                    String exerciseName = set.getExercise().getName();
-                    double weight = set.getWeight();
-                    maxWeights.put(exerciseName,
-                            Math.max(maxWeights.getOrDefault(exerciseName, 0.0), weight));
-                }
-            }
-        }
-
-        StringBuilder strengthText = new StringBuilder();
-        if (maxWeights.isEmpty()) {
-            strengthText.append("💪 No strength data yet\n\n");
-            strengthText.append("📊 Log sets with weights to track PRs!");
-        } else {
-            strengthText.append("🏆 Personal Records:\n\n");
-            maxWeights.entrySet().stream()
-                    .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                    .limit(5)
-                    .forEach(entry -> strengthText.append(String.format("🏋️ %s: %.0f lbs\n",
-                            entry.getKey(), entry.getValue())));
-            strengthText.append("\n💪 Keep pushing those PRs!");
-        }
-
-        return createProgressCard("💪 Strength Progress", strengthText.toString(), "#4CAF50");
-    }
-
-    private VBox createVolumeCard(List<Workout> workouts) {
-        double totalVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).sum();
-        double avgVolume = totalVolume / workouts.size();
-        double maxVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).max().orElse(0.0);
-
-        String volumeText = String.format(
-                "📊 Total Volume: %,.0f lbs\n" +
-                        "📈 Average/Workout: %,.0f lbs\n" +
-                        "🏆 Best Session: %,.0f lbs\n" +
-                        "🔥 Total Workouts: %d\n\n" +
-                        "💪 Volume = Weight × Reps × Sets",
-                totalVolume, avgVolume, maxVolume, workouts.size()
-        );
-
-        return createProgressCard("📊 Volume Stats", volumeText, "#2196F3");
-    }
-
-    private VBox createConsistencyCard(List<Workout> workouts) {
-        int totalWorkouts = workouts.size();
-        Set<LocalDate> workoutDates = workouts.stream()
-                .map(w -> w.getStartTime().toLocalDate())
-                .collect(Collectors.toSet());
-
-        String consistencyText = String.format(
-                "🔥 Current Streak: 0 days\n" +
-                        "📅 Total Workouts: %d\n" +
-                        "📊 Workout Days: %d\n\n" +
-                        "🎯 Keep the momentum going!",
-                totalWorkouts, workoutDates.size()
-        );
-
-        return createProgressCard("🔥 Consistency", consistencyText, "#FF5722");
-    }
-
-    private VBox createRecentWorkoutsCard(List<Workout> workouts) {
-        StringBuilder recentText = new StringBuilder("📋 Last 5 Workouts:\n\n");
-
-        workouts.stream()
-                .limit(5)
-                .forEach(w -> {
-                    recentText.append(String.format("💪 %s\n", w.getName()));
-                    recentText.append(String.format("📅 %s\n", w.getStartTime().toLocalDate()));
-                    recentText.append(String.format("⏱️ %d min | 📊 %.0f lbs\n\n",
-                            w.getDurationMinutes(), w.getTotalVolume()));
-                });
-
-        return createProgressCard("📋 Recent Activity", recentText.toString(), "#9C27B0");
-    }
-
     private VBox createProgressCard(String title, String content, String color) {
         VBox card = new VBox(12);
         card.setStyle(
@@ -1791,101 +2095,1224 @@ public class MainController implements Initializable {
             if (empty || exercise == null) {
                 setText(null);
                 setGraphic(null);
-                setStyle("");
+                setStyle("-fx-background-color: transparent;");
             } else {
-                VBox content = new VBox(6);
-                content.setStyle("-fx-padding: 12px;");
+                // Create custom cell layout
+                HBox cellContent = new HBox(12);
+                cellContent.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                cellContent.setPadding(new javafx.geometry.Insets(8, 12, 8, 12));
 
-                // EXERCISE NAME - PURE WHITE WITH BLACK SHADOW
-                Label nameLabel = new Label(exercise.getEquipmentEmoji() + " " + exercise.getName());
+                // Exercise emoji/icon
+                Label icon = new Label(getExerciseIcon(exercise.getEquipment()));
+                icon.setStyle("-fx-font-size: 20px;");
+
+                // Exercise name and difficulty
+                VBox textContent = new VBox(3);
+
+                Label nameLabel = new Label(exercise.getName());
                 nameLabel.setStyle(
-                        "-fx-font-weight: bold; " +
-                                "-fx-text-fill: #FFFFFF; " +  // PURE WHITE
-                                "-fx-font-size: 16px; " +
-                                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 3, 0, 0, 2);"
+                        "-fx-font-size: 14px; " +
+                                "-fx-font-weight: bold; " +
+                                "-fx-text-fill: white;"
                 );
 
-                // DETAILS - BRIGHT CYAN FOR VISIBILITY
-                Label detailLabel = new Label(
-                        "💪 " + exercise.getMuscleGroup() + " • " +
-                                exercise.getDifficulty() + " " + exercise.getDifficultyEmoji()
+                Label detailsLabel = new Label(
+                        exercise.getDifficulty() + " • " + exercise.getEquipment()
                 );
-                detailLabel.setStyle(
-                        "-fx-text-fill: #00f5ff; " +  // BRIGHT CYAN
-                                "-fx-font-size: 14px; " +
-                                "-fx-font-weight: 600; " +
-                                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 2, 0, 0, 1);"
+                detailsLabel.setStyle(
+                        "-fx-font-size: 11px; " +
+                                "-fx-text-fill: #00d4ff;"
                 );
 
-                content.getChildren().addAll(nameLabel, detailLabel);
-                setGraphic(content);
+                textContent.getChildren().addAll(nameLabel, detailsLabel);
+
+                // Difficulty badge
+                Label difficultyBadge = new Label(getDifficultyEmoji(exercise.getDifficulty()));
+                difficultyBadge.setStyle("-fx-font-size: 16px;");
+
+                javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+                HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+
+                cellContent.getChildren().addAll(icon, textContent, spacer, difficultyBadge);
+
+                setGraphic(cellContent);
                 setText(null);
 
-                // NORMAL STATE - DARK BACKGROUND
+                // Styling for normal and selected states
                 setStyle(
-                        "-fx-background-color: #1a1a1a; " +
-                                "-fx-background-radius: 10px; " +
-                                "-fx-padding: 4px; " +
-                                "-fx-border-color: rgba(255,255,255,0.1); " +
-                                "-fx-border-width: 1px; " +
-                                "-fx-border-radius: 10px;"
+                        "-fx-background-color: #2b2b2b; " +
+                                "-fx-background-radius: 8px; " +
+                                "-fx-padding: 4px;"
                 );
 
-                // HOVER STATE - BRIGHT CYAN BACKGROUND WITH BLACK TEXT
+                // Hover effect
                 setOnMouseEntered(e -> {
-                    setStyle(
-                            "-fx-background-color: #00f5ff; " +  // BRIGHT CYAN
-                                    "-fx-background-radius: 10px; " +
-                                    "-fx-padding: 4px; " +
-                                    "-fx-border-color: #FFFFFF; " +
-                                    "-fx-border-width: 2px; " +
-                                    "-fx-border-radius: 10px; " +
-                                    "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.8), 12, 0, 0, 6);"
-                    );
-
-                    // CHANGE TEXT COLORS ON HOVER
-                    nameLabel.setStyle(
-                            "-fx-font-weight: bold; " +
-                                    "-fx-text-fill: #000000; " +  // BLACK TEXT
-                                    "-fx-font-size: 17px; " +  // SLIGHTLY LARGER
-                                    "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.8), 2, 0, 0, 1);"
-                    );
-
-                    detailLabel.setStyle(
-                            "-fx-text-fill: #1a1a1a; " +  // DARK TEXT
-                                    "-fx-font-size: 14px; " +
-                                    "-fx-font-weight: bold; " +
-                                    "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.6), 1, 0, 0, 1);"
-                    );
+                    if (!isSelected()) {
+                        setStyle(
+                                "-fx-background-color: #3a3a3a; " +
+                                        "-fx-background-radius: 8px; " +
+                                        "-fx-padding: 4px; " +
+                                        "-fx-cursor: hand;"
+                        );
+                    }
                 });
 
                 setOnMouseExited(e -> {
-                    setStyle(
-                            "-fx-background-color: #1a1a1a; " +
-                                    "-fx-background-radius: 10px; " +
-                                    "-fx-padding: 4px; " +
-                                    "-fx-border-color: rgba(255,255,255,0.1); " +
-                                    "-fx-border-width: 1px; " +
-                                    "-fx-border-radius: 10px;"
-                    );
-
-                    // RESET TEXT COLORS
-                    nameLabel.setStyle(
-                            "-fx-font-weight: bold; " +
-                                    "-fx-text-fill: #FFFFFF; " +
-                                    "-fx-font-size: 16px; " +
-                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,1), 3, 0, 0, 2);"
-                    );
-
-                    detailLabel.setStyle(
-                            "-fx-text-fill: #00f5ff; " +
-                                    "-fx-font-size: 14px; " +
-                                    "-fx-font-weight: 600; " +
-                                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 2, 0, 0, 1);"
-                    );
+                    if (!isSelected()) {
+                        setStyle(
+                                "-fx-background-color: #2b2b2b; " +
+                                        "-fx-background-radius: 8px; " +
+                                        "-fx-padding: 4px;"
+                        );
+                    }
                 });
+
+                // Selected state
+                if (isSelected()) {
+                    setStyle(
+                            "-fx-background-color: linear-gradient(to right, #00d4ff, #0099cc); " +
+                                    "-fx-background-radius: 8px; " +
+                                    "-fx-padding: 4px;"
+                    );
+                    nameLabel.setStyle(
+                            "-fx-font-size: 14px; " +
+                                    "-fx-font-weight: bold; " +
+                                    "-fx-text-fill: white;"
+                    );
+                    detailsLabel.setStyle(
+                            "-fx-font-size: 11px; " +
+                                    "-fx-text-fill: rgba(255,255,255,0.9);"
+                    );
+                }
             }
         }
+
+        private String getExerciseIcon(String equipment) {
+            return switch (equipment.toLowerCase()) {
+                case "barbell" -> "🏋️";
+                case "dumbbell" -> "💪";
+                case "cable" -> "🔗";
+                case "machine" -> "⚙️";
+                case "bodyweight" -> "🤸";
+                default -> "🏋️";
+            };
+        }
+
+        private String getDifficultyEmoji(String difficulty) {
+            return switch (difficulty.toLowerCase()) {
+                case "beginner" -> "🟢";
+                case "intermediate" -> "🟡";
+                case "advanced" -> "🔴";
+                default -> "⚪";
+            };
+        }
     }
+    // ==================== PROGRESS CHART HELPER METHODS ====================
+
+    private void displayOverviewStats(List<Workout> workouts) {
+        if (statsCardsContainer == null) return;
+
+        HBox statsRow = new HBox(20);
+        statsRow.setAlignment(Pos.CENTER);
+
+        // Total Workouts
+        VBox totalCard = createStatCard("💪", String.valueOf(workouts.size()), "Total Workouts", "#4CAF50");
+
+        // Total Volume
+        double totalVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).sum();
+        VBox volumeCard = createStatCard("🏋️", String.format("%,.0f lbs", totalVolume), "Total Volume", "#2196F3");
+
+        // Total Sets
+        int totalSets = workouts.stream().mapToInt(Workout::getTotalSets).sum();
+        VBox setsCard = createStatCard("📊", String.valueOf(totalSets), "Total Sets", "#FF9800");
+
+        // Average Duration
+        long avgDuration = (long) workouts.stream()
+                .mapToLong(Workout::getDurationMinutes)
+                .average()
+                .orElse(0);
+        VBox durationCard = createStatCard("⏱️", avgDuration + " min", "Avg Duration", "#9C27B0");
+
+        statsRow.getChildren().addAll(totalCard, volumeCard, setsCard, durationCard);
+        statsCardsContainer.getChildren().add(statsRow);
+    }
+
+
+    private void displayVolumeChart(List<Workout> workouts) {
+        if (volumeChart == null) return;
+
+        volumeChart.setTitle("📈 Volume Progress Over Time");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Total Volume");
+
+        // Group by week
+        Map<String, Double> weeklyData = new LinkedHashMap<>();
+        for (Workout w : workouts) {
+            String week = "W" + w.getStartTime().toLocalDate().get(java.time.temporal.WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear());
+            weeklyData.merge(week, w.getTotalVolume(), Double::sum);
+        }
+
+        weeklyData.forEach((week, volume) -> series.getData().add(new XYChart.Data<>(week, volume)));
+        volumeChart.getData().add(series);
+    }
+
+    private void displayExerciseChart(List<Workout> workouts) {
+        if (exerciseChart == null) return;
+
+        exerciseChart.setTitle("🏆 Top Exercises by Volume");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+
+        Map<String, Double> exerciseVolumes = new HashMap<>();
+        for (Workout w : workouts) {
+            for (WorkoutSet set : w.getSets()) {
+                exerciseVolumes.merge(set.getExercise().getName(), set.getVolume(), Double::sum);
+            }
+        }
+
+        exerciseVolumes.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(5)
+                .forEach(entry -> series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue())));
+
+        exerciseChart.getData().add(series);
+    }
+
+    private void displayProgressTimeline(List<Workout> workouts) {
+        if (progressChart == null) return;
+
+        progressChart.setTitle("📅 Workout Frequency Timeline");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Workouts per Week");
+
+        Map<String, Long> weeklyCount = workouts.stream()
+                .collect(Collectors.groupingBy(
+                        w -> "W" + w.getStartTime().toLocalDate().get(java.time.temporal.WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear()),
+                        Collectors.counting()
+                ));
+
+        weeklyCount.forEach((week, count) -> series.getData().add(new XYChart.Data<>(week, count)));
+        progressChart.getData().add(series);
+    }
+
+    private void displayPersonalRecords() {
+        if (prTableView == null) return;
+
+        Map<String, Double> prs = dbHelper.getPersonalRecords(currentUser.getId());
+
+        javafx.collections.ObservableList<ProgressController.PersonalRecordEntry> entries =
+                javafx.collections.FXCollections.observableArrayList();
+
+        prs.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(10)
+                .forEach(entry -> entries.add(new ProgressController.PersonalRecordEntry(
+                        entry.getKey(),
+                        String.format("%.1f lbs", entry.getValue()),
+                        "Recent"
+                )));
+
+        prTableView.setItems(entries);
+    }
+
+    private void displayStrengthProgress(List<Workout> workouts) {
+        if (personalRecordsContainer == null) return;
+
+        Map<String, Double> maxWeights = calculateMaxWeights(workouts);
+
+        if (maxWeights.isEmpty()) {
+            Label noData = new Label("🏋️ No strength data yet!\n\nStart logging workouts to track your progress!");
+            noData.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-padding: 20px;");
+            noData.setWrapText(true);
+            personalRecordsContainer.getChildren().add(noData);
+            return;
+        }
+
+        for (Map.Entry<String, Double> entry : maxWeights.entrySet()) {
+            HBox prCard = createPRCard(entry.getKey(), entry.getValue());
+            personalRecordsContainer.getChildren().add(prCard);
+        }
+    }
+
+    private HBox createPRCard(String exercise, double weight) {
+        HBox card = new HBox(15);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(15, 20, 15, 20));
+        card.setStyle(
+                "-fx-background-color: #2b2b2b;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-border-color: #4CAF50;" +
+                        "-fx-border-width: 2px;" +
+                        "-fx-border-radius: 12px;"
+        );
+
+        Label exerciseLabel = new Label(exercise);
+        exerciseLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+        exerciseLabel.setMinWidth(150);
+
+        Label weightLabel = new Label(String.format("%.1f lbs", weight));
+        weightLabel.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label badge = new Label("PR! 🎉");
+        badge.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        card.getChildren().addAll(exerciseLabel, weightLabel, spacer, badge);
+        return card;
+    }
+
+    private void displayConsistencyStats(List<Workout> workouts) {
+        if (bodyMetricsContainer == null) return;
+
+        int currentStreak = calculateCurrentStreak(workouts);
+        int longestStreak = calculateLongestStreak(workouts);
+        int monthWorkouts = (int) workouts.stream()
+                .filter(w -> w.getStartTime().isAfter(LocalDateTime.now().minusMonths(1)))
+                .count();
+
+        VBox streakCard = createConsistencyCard("🔥 Current Streak", currentStreak + " days", "#FF5722");
+        VBox longestCard = createConsistencyCard("🏆 Longest Streak", longestStreak + " days", "#FFD700");
+        VBox monthCard = createConsistencyCard("📅 This Month", monthWorkouts + " workouts", "#4CAF50");
+
+        HBox row = new HBox(15, streakCard, longestCard, monthCard);
+        row.setAlignment(Pos.CENTER);
+        bodyMetricsContainer.getChildren().add(row);
+    }
+
+    private VBox createConsistencyCard(String title, String value, String color) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(20));
+        card.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, " + color + ", " + adjustBrightness(color) + ");" +
+                        "-fx-background-radius: 15px;" +
+                        "-fx-min-width: 180px;" +
+                        "-fx-min-height: 120px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 5);"
+        );
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 600;");
+
+        Label valueLabel = new Label(value);
+        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        card.getChildren().addAll(titleLabel, valueLabel);
+        return card;
+    }
+
+    private Map<String, Double> calculateMaxWeights(List<Workout> workouts) {
+        Map<String, Double> maxWeights = new HashMap<>();
+
+        for (Workout w : workouts) {
+            for (WorkoutSet set : w.getSets()) {
+                maxWeights.merge(set.getExercise().getName(), set.getWeight(), Double::max);
+            }
+        }
+
+        return maxWeights.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(4)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    }
+
+    private int calculateCurrentStreak(List<Workout> workouts) {
+        if (workouts.isEmpty()) return 0;
+
+        List<LocalDate> dates = workouts.stream()
+                .map(w -> w.getStartTime().toLocalDate())
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+
+        int streak = 0;
+        LocalDate checkDate = LocalDate.now();
+
+        for (LocalDate date : dates) {
+            if (date.equals(checkDate) || date.equals(checkDate.minusDays(1))) {
+                streak++;
+                checkDate = date.minusDays(1);
+            } else {
+                break;
+            }
+        }
+
+        return streak;
+    }
+
+    private int calculateLongestStreak(List<Workout> workouts) {
+        if (workouts.isEmpty()) return 0;
+
+        List<LocalDate> dates = workouts.stream()
+                .map(w -> w.getStartTime().toLocalDate())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        int maxStreak = 1, currentStreak = 1;
+
+        for (int i = 1; i < dates.size(); i++) {
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(dates.get(i - 1), dates.get(i));
+
+            if (daysBetween <= 1) {
+                currentStreak++;
+                maxStreak = Math.max(maxStreak, currentStreak);
+            } else {
+                currentStreak = 1;
+            }
+        }
+
+        return maxStreak;
+    }
+
+    private void showNoProgressData() {
+        if (statsCardsContainer != null) {
+            statsCardsContainer.getChildren().clear();
+
+            VBox noDataBox = new VBox(20);
+            noDataBox.setAlignment(Pos.CENTER);
+            noDataBox.setPadding(new Insets(50));
+
+            Label icon = new Label("📊");
+            icon.setStyle("-fx-font-size: 72px;");
+
+            Label message = new Label("No workout data available for this period");
+            message.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;");
+
+            Label suggestion = new Label("Complete some workouts to see your progress!");
+            suggestion.setStyle("-fx-text-fill: #b0b0b0; -fx-font-size: 14px;");
+
+            noDataBox.getChildren().addAll(icon, message, suggestion);
+            statsCardsContainer.getChildren().add(noDataBox);
+        }
+    }
+
+    // Inner class for Personal Records Table
+    public static class PersonalRecordEntry {
+        private final String exercise;
+        private final String weight;
+        private final String date;
+
+        public PersonalRecordEntry(String exercise, String weight, String date) {
+            this.exercise = exercise;
+            this.weight = weight;
+            this.date = date;
+        }
+
+        public String getExercise() { return exercise; }
+        public String getWeight() { return weight; }
+        public String getDate() { return date;  }
+    }
+    // ==================== ENHANCED HOME TAB METHODS ====================
+
+    private void displayRecentWorkouts(List<Workout> workouts) {
+        if (recentWorkoutsBox == null) return;
+
+        recentWorkoutsBox.getChildren().clear();
+
+        if (workouts.isEmpty()) {
+            VBox emptyState = createEmptyWorkoutState();
+            recentWorkoutsBox.getChildren().add(emptyState);
+            return;
+        }
+
+        // Show last 5 workouts
+        workouts.stream()
+                .sorted((w1, w2) -> w2.getStartTime().compareTo(w1.getStartTime()))
+                .limit(5)
+                .forEach(workout -> {
+                    HBox workoutCard = createWorkoutCard(workout);
+                    recentWorkoutsBox.getChildren().add(workoutCard);
+                });
+    }
+
+    private HBox createWorkoutCard(Workout workout) {
+        HBox card = new HBox(20);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(20, 25, 20, 25));
+        card.setStyle(
+                "-fx-background-color: linear-gradient(135deg, #2b2b2b 0%, #1f1f1f 100%);" +
+                        "-fx-background-radius: 15px;" +
+                        "-fx-border-color: rgba(0,212,255,0.3);" +
+                        "-fx-border-width: 1px;" +
+                        "-fx-border-radius: 15px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 5);" +
+                        "-fx-cursor: hand;"
+        );
+
+        // Workout icon
+        Label icon = new Label("🏋️");
+        icon.setStyle("-fx-font-size: 32px;");
+
+        // Workout details
+        VBox details = new VBox(5);
+
+        Label nameLabel = new Label(workout.getName());
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Label dateLabel = new Label(workout.getStartTime().format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a")));
+        dateLabel.setStyle("-fx-text-fill: #b0b0b0; -fx-font-size: 13px;");
+
+        Label statsLabel = new Label(String.format("%d sets • %.0f lbs volume • %d min",
+                workout.getTotalSets(),
+                workout.getTotalVolume(),
+                workout.getDurationMinutes()));
+        statsLabel.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 13px; -fx-font-weight: 600;");
+
+        details.getChildren().addAll(nameLabel, dateLabel, statsLabel);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // View button
+        Button viewBtn = new Button("View →");
+        viewBtn.setStyle(
+                "-fx-background-color: #00d4ff;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 8px 20px;" +
+                        "-fx-background-radius: 10px;" +
+                        "-fx-cursor: hand;"
+        );
+
+        card.getChildren().addAll(icon, details, spacer, viewBtn);
+
+        // Hover effect
+        card.setOnMouseEntered(e -> {
+            card.setStyle(card.getStyle() + "-fx-scale-x: 1.02; -fx-scale-y: 1.02;");
+        });
+        card.setOnMouseExited(e -> {
+            card.setStyle(card.getStyle().replace("-fx-scale-x: 1.02; -fx-scale-y: 1.02;", ""));
+        });
+
+        return card;
+    }
+
+    private VBox createEmptyWorkoutState() {
+        VBox emptyState = new VBox(15);
+        emptyState.setAlignment(Pos.CENTER);
+        emptyState.setPadding(new Insets(40));
+        emptyState.setStyle(
+                "-fx-background-color: rgba(43,43,43,0.5);" +
+                        "-fx-background-radius: 15px;" +
+                        "-fx-border-color: rgba(255,255,255,0.1);" +
+                        "-fx-border-width: 2px;" +
+                        "-fx-border-style: dashed;" +
+                        "-fx-border-radius: 15px;"
+        );
+
+        Label icon = new Label("💪");
+        icon.setStyle("-fx-font-size: 64px;");
+
+        Label message = new Label("No workouts yet!");
+        message.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;");
+
+        Label subtitle = new Label("Start your first workout to see it here");
+        subtitle.setStyle("-fx-text-fill: #b0b0b0; -fx-font-size: 14px;");
+
+        Button startBtn = new Button("🚀 Start Your First Workout");
+        startBtn.setStyle(
+                "-fx-background-color: linear-gradient(to right, #00d4ff, #0099cc);" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 16px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 12px 30px;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-cursor: hand;"
+        );
+        startBtn.setOnAction(e -> {
+            mainTabPane.getSelectionModel().select(workoutTab);
+            handleStartWorkout();
+        });
+
+        emptyState.getChildren().addAll(icon, message, subtitle, startBtn);
+        return emptyState;
+    }
+
+    private void updateStatsCards(List<Workout> workouts) {
+        if (statsCardsContainer == null) return;
+
+        statsCardsContainer.getChildren().clear();
+
+        // Calculate stats
+        int totalWorkouts = workouts.size();
+        double totalVolume = workouts.stream().mapToDouble(Workout::getTotalVolume).sum();
+        int totalSets = workouts.stream().mapToInt(Workout::getTotalSets).sum();
+        long avgDuration = workouts.isEmpty() ? 0 :
+                (long) workouts.stream().mapToLong(Workout::getDurationMinutes).average().orElse(0);
+
+        // Create stat cards
+        VBox workoutsCard = createStatCard("💪", String.valueOf(totalWorkouts), "Total Workouts",
+                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)");
+        VBox volumeCard = createStatCard("🏋️", String.format("%.0fK", totalVolume / 1000), "Total Volume",
+                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)");
+        VBox setsCard = createStatCard("📊", String.valueOf(totalSets), "Total Sets",
+                "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)");
+        VBox durationCard = createStatCard("⏱️", avgDuration + "m", "Avg Duration",
+                "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)");
+
+        statsCardsContainer.getChildren().addAll(workoutsCard, volumeCard, setsCard, durationCard);
+    }
+
+    private VBox createStatCard(String icon, String value, String label, String gradient) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(25));
+        card.setStyle(
+                "-fx-background: " + gradient + ";" +
+                        "-fx-background-radius: 18px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 6);" +
+                        "-fx-cursor: hand;"
+        );
+        card.setMinWidth(160);
+        card.setMinHeight(140);
+
+        Label iconLabel = new Label(icon);
+        iconLabel.setStyle("-fx-font-size: 42px;");
+
+        Label valueLabel = new Label(value);
+        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 32px; -fx-font-weight: bold;");
+
+        Label descLabel = new Label(label);
+        descLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 13px; -fx-font-weight: 600;");
+
+        card.getChildren().addAll(iconLabel, valueLabel, descLabel);
+
+        // Hover animation
+        card.setOnMouseEntered(e -> {
+            card.setScaleX(1.08);
+            card.setScaleY(1.08);
+        });
+        card.setOnMouseExited(e -> {
+            card.setScaleX(1.0);
+            card.setScaleY(1.0);
+        });
+
+        return card;
+    }
+
+    private void displayMotivationQuote() {
+        if (motivationLabel == null) return;
+
+        String[] quotes = {
+                "The only bad workout is the one that didn't happen. Let's make today count! 💪",
+                "Push yourself, because no one else is going to do it for you. You got this! 🔥",
+                "Success starts with self-discipline. Every rep brings you closer to your goals! 🎯",
+                "Your body can stand almost anything. It's your mind you have to convince. Keep pushing! 🧠",
+                "The pain you feel today will be the strength you feel tomorrow. Stay strong! ⚡",
+                "Don't limit your challenges. Challenge your limits! You're unstoppable! 🚀"
+        };
+
+        int randomIndex = (int) (Math.random() * quotes.length);
+        motivationLabel.setText(quotes[randomIndex]);
+    }
+
+    private void displayAchievements(List<Workout> workouts) {
+        if (achievementsBox == null) return;
+
+        achievementsBox.getChildren().clear();
+
+        // Check for achievements
+        if (workouts.size() >= 1) {
+            achievementsBox.getChildren().add(createAchievementBadge("🎉", "First Steps", "Completed your first workout!"));
+        }
+        if (workouts.size() >= 10) {
+            achievementsBox.getChildren().add(createAchievementBadge("🔥", "On Fire", "10 workouts completed!"));
+        }
+        if (workouts.size() >= 50) {
+            achievementsBox.getChildren().add(createAchievementBadge("💯", "Dedicated", "50 workouts milestone!"));
+        }
+        if (workouts.size() >= 100) {
+            achievementsBox.getChildren().add(createAchievementBadge("👑", "Champion", "100 workouts! Legendary!"));
+        }
+    }
+
+    private VBox createAchievementBadge(String icon, String title, String description) {
+        VBox badge = new VBox(8);
+        badge.setAlignment(Pos.CENTER);
+        badge.setPadding(new Insets(20));
+        badge.setStyle(
+                "-fx-background-color: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);" +
+                        "-fx-background-radius: 15px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(255,215,0,0.5), 12, 0, 0, 6);"
+        );
+        badge.setMinWidth(140);
+
+        Label iconLabel = new Label(icon);
+        iconLabel.setStyle("-fx-font-size: 36px;");
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        Label descLabel = new Label(description);
+        descLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 11px;");
+        descLabel.setWrapText(true);
+        descLabel.setMaxWidth(120);
+        descLabel.setAlignment(Pos.CENTER);
+
+        badge.getChildren().addAll(iconLabel, titleLabel, descLabel);
+
+        return badge;
+    }
+    // ==================== QUICK ACTION HANDLERS ====================
+
+    @FXML
+    private void handleQuickSetClick() {
+        System.out.println("🏋️ Quick Set clicked - switching to Workout tab");
+
+        // Animate card
+        animateCardClick(quickSetCard);
+
+        // Switch to workout tab after brief delay
+        javafx.application.Platform.runLater(() -> {
+            try {
+                Thread.sleep(150);
+                mainTabPane.getSelectionModel().select(workoutTab);
+
+                // Auto-start workout if not started
+                if (currentWorkout == null) {
+                    handleStartWorkout();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    @FXML
+    private void handleProgressClick() {
+        System.out.println("📊 Progress clicked - switching to Progress tab");
+
+        // Animate card
+        animateCardClick(progressCard);
+
+        // Switch to progress tab after brief delay
+        javafx.application.Platform.runLater(() -> {
+            try {
+                Thread.sleep(150);
+                mainTabPane.getSelectionModel().select(progressTab);
+                loadProgressCharts();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+    // Call this from initialize() to verify database
+    private void verifyDatabaseExercises() {
+        System.out.println("\n=== DATABASE VERIFICATION ===");
+
+        String[] muscleGroups = {
+                "Chest", "Back", "Shoulders", "Biceps", "Triceps",
+                "Forearms", "Abs", "Obliques", "Lower Back", "Glutes",
+                "Quadriceps", "Hamstrings", "Calves", "Neck"
+        };
+
+        int totalExercises = 0;
+        for (String muscle : muscleGroups) {
+            List<Exercise> exercises = dbHelper.getExercisesByMuscleGroup(muscle);
+            int count = exercises != null ? exercises.size() : 0;
+            totalExercises += count;
+            System.out.println(muscle + ": " + count + " exercises");
+        }
+
+        System.out.println("TOTAL: " + totalExercises + " exercises in database");
+        System.out.println("=============================\n");
+    }
+
+    @FXML
+    private void handleMuscleClick(String muscleName) {
+        System.out.println("💪 Muscle clicked: " + muscleName);
+
+        // Update selected muscle label
+        if (selectedMuscleLabel != null) {
+            selectedMuscleLabel.setText("🎯 Selected: " + muscleName.toUpperCase());
+            selectedMuscleLabel.setStyle(
+                    "-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 4, 0, 0, 2);"
+            );
+        }
+
+        // ✅ FIX: Convert muscle name to proper case for database query
+        String properMuscleName = toProperCase(muscleName);
+        System.out.println("🔍 Querying database with proper case: '" + properMuscleName + "'");
+
+        // Load exercises for this muscle group from database
+        List<Exercise> exercises = dbHelper.getExercisesByMuscleGroup(properMuscleName);
+
+        System.out.println("🔍 Database query returned: " + (exercises != null ? exercises.size() : 0) + " exercises");
+
+        if (exercises != null && !exercises.isEmpty()) {
+            System.out.println("✅ Found " + exercises.size() + " exercises for " + muscleName);
+
+            // Clear and update exercise list
+            if (exerciseListView != null) {
+                exerciseListView.getItems().clear();
+                exerciseListView.getItems().addAll(exercises);
+                exerciseListView.refresh();
+
+                System.out.println("📋 Exercise list populated with:");
+                for (Exercise ex : exercises) {
+                    System.out.println("  - " + ex.getName() + " (" + ex.getDifficulty() + ")");
+                }
+            }
+
+            // Update instruction area with helpful message
+            if (exerciseDescriptionArea != null) {
+                exerciseDescriptionArea.setText(
+                        "💡 " + exercises.size() + " EXERCISES LOADED FOR " + muscleName.toUpperCase() + "\n\n" +
+                                "✨ SELECT AN EXERCISE FROM THE LIST ABOVE\n\n" +
+                                "You will see:\n" +
+                                "• Animated demonstration (GIF)\n" +
+                                "• Step-by-step instructions\n" +
+                                "• Equipment needed\n" +
+                                "• Difficulty level\n\n" +
+                                "Click any exercise to begin!"
+                );
+                exerciseDescriptionArea.setStyle(
+                        "-fx-font-size: 15px; " +
+                                "-fx-font-weight: 600; " +
+                                "-fx-text-fill: #FFFFFF; " +
+                                "-fx-control-inner-background: #2b2b2b;"
+                );
+            }
+
+            // Show image placeholder
+            showImagePlaceholder();
+
+        } else {
+            // No exercises found
+            System.out.println("⚠️ No exercises found for: " + muscleName);
+            System.out.println("⚠️ Database might be empty - check insertSampleExercises()");
+
+            if (exerciseListView != null) {
+                exerciseListView.getItems().clear();
+            }
+
+            if (exerciseDescriptionArea != null) {
+                exerciseDescriptionArea.setText(
+                        "❌ NO EXERCISES FOUND FOR " + muscleName.toUpperCase() + "\n\n" +
+                                "⚠️ DATABASE ISSUE DETECTED\n\n" +
+                                "Possible causes:\n" +
+                                "1. Database file not loaded\n" +
+                                "2. Exercises not inserted\n" +
+                                "3. Muscle group name mismatch\n\n" +
+                                "Solution: Check DatabaseHelper.insertSampleExercises()\n" +
+                                "Make sure musclemap.db exists in project root."
+                );
+                exerciseDescriptionArea.setStyle(
+                        "-fx-font-size: 14px; " +
+                                "-fx-font-weight: 600; " +
+                                "-fx-text-fill: #ff6b6b; " +
+                                "-fx-control-inner-background: #2b2b2b;"
+                );
+            }
+
+            showImagePlaceholder();
+        }
+    }
+
+// ✅ ADD THIS NEW HELPER METHOD AT THE END OF YOUR CLASS (before the last closing brace)
+    /**
+     * Converts any string to proper case (First Letter Uppercase)
+     * Examples: "GLUTES" -> "Glutes", "LOWER BACK" -> "Lower Back"
+     */
+    /**
+     * Converts any string to proper case (First Letter Uppercase)
+     * Examples: "FOREARMS" -> "Forearms", "LOWER BACK" -> "Lower Back"
+     */
+    /**
+     * Converts muscle names to proper case for database queries
+     * Examples: "FOREARMS" -> "Forearms", "LOWER BACK" -> "Lower Back"
+     */
+    /**
+     * Converts muscle names to proper case for database queries
+     * Examples: "FOREARMS" -> "Forearms", "LOWER BACK" -> "Lower Back"
+     */
+    private String toProperCase(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+
+        // ✅ CRITICAL: Single backslash for regex (not double!)
+        String[] words = str.toLowerCase().split("\\s+");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (result.length() > 0) {
+                result.append(" ");
+            }
+            // Capitalize first letter of each word
+            result.append(Character.toUpperCase(word.charAt(0)))
+                    .append(word.substring(1));
+        }
+
+        return result.toString();
+    }
+
+// ✅ ADD THIS NEW HELPER METHOD TO YOUR CLASS
+    /**
+     * Converts any string to proper case (First Letter Uppercase)
+     * Examples: "CHEST" -> "Chest", "lower back" -> "Lower Back"
+     */
+    private void animateCardClick(VBox card) {
+        if (card == null) return;
+
+        // Scale down animation
+        javafx.animation.ScaleTransition scaleDown = new javafx.animation.ScaleTransition(javafx.util.Duration.millis(100), card);
+        scaleDown.setToX(0.95);
+        scaleDown.setToY(0.95);
+
+        // Scale up animation
+        javafx.animation.ScaleTransition scaleUp = new javafx.animation.ScaleTransition(javafx.util.Duration.millis(100), card);
+        scaleUp.setToX(1.0);
+        scaleUp.setToY(1.0);
+
+        // Play animations
+        scaleDown.setOnFinished(e -> scaleUp.play());
+        scaleDown.play();
+    }
+    // ==================== EXERCISE IMAGE LOADING ====================
+
+    private void loadExerciseImage(Exercise exercise) {
+        if (exercise == null) {
+            showImagePlaceholder();
+            return;
+        }
+
+        System.out.println("🖼️ Attempting to load image for: " + exercise.getName());
+
+        // Show loading indicator on UI thread
+        javafx.application.Platform.runLater(() -> {
+            if (imagePlaceholder != null) imagePlaceholder.setVisible(false);
+            if (exerciseImageView != null) exerciseImageView.setVisible(false);
+            if (imageLoadingIndicator != null) imageLoadingIndicator.setVisible(true);
+        });
+
+        // Load image in background thread
+        Task<Image> imageLoadTask = new Task<Image>() {
+            @Override
+            protected Image call() throws Exception {
+                // ✅ CHANGED: Use exercise.getGifUrl() instead of getExerciseImageUrl()
+                String imageUrl = exercise.getGifUrl();
+
+                if (imageUrl == null || imageUrl.isEmpty()) {
+                    System.err.println("❌ No GIF URL found for: " + exercise.getName());
+                    throw new Exception("No image URL available");
+                }
+
+                System.out.println("📥 Loading image from URL: " + imageUrl);
+
+                // Load with background loading enabled
+                Image image = new Image(imageUrl, true);
+
+                // Wait for image to finish loading
+                int attempts = 0;
+                while (image.getProgress() < 1.0 && attempts < 50) {
+                    Thread.sleep(100);
+                    attempts++;
+                }
+
+                if (image.isError()) {
+                    System.err.println("❌ Image error: " + image.getException());
+                    throw new Exception("Failed to load image");
+                }
+
+                System.out.println("✅ Image loaded successfully! Size: " + image.getWidth() + "x" + image.getHeight());
+                return image;
+            }
+        };
+
+        imageLoadTask.setOnSucceeded(e -> {
+            Image image = imageLoadTask.getValue();
+            if (image != null && !image.isError()) {
+                javafx.application.Platform.runLater(() -> {
+                    if (exerciseImageView != null) {
+                        exerciseImageView.setImage(image);
+                        exerciseImageView.setVisible(true);
+                    }
+                    if (imageLoadingIndicator != null) {
+                        imageLoadingIndicator.setVisible(false);
+                    }
+                    System.out.println("✅ Image displayed successfully for: " + exercise.getName());
+                });
+            } else {
+                showImageError();
+            }
+        });
+
+        imageLoadTask.setOnFailed(e -> {
+            System.err.println("❌ Failed to load image: " + imageLoadTask.getException().getMessage());
+            imageLoadTask.getException().printStackTrace();
+            showImageError();
+        });
+
+        // Start loading in background thread
+        Thread imageThread = new Thread(imageLoadTask);
+        imageThread.setDaemon(true);
+        imageThread.start();
+    }
+
+    // ✅ ADD THIS METHOD if it doesn't exist
+    private void showImagePlaceholder() {
+        javafx.application.Platform.runLater(() -> {
+            if (exerciseImageView != null) {
+                exerciseImageView.setVisible(false);
+                exerciseImageView.setImage(null);
+            }
+            if (imageLoadingIndicator != null) {
+                imageLoadingIndicator.setVisible(false);
+            }
+            if (imagePlaceholder != null) {
+                imagePlaceholder.setVisible(true);
+            }
+            System.out.println("📭 Showing image placeholder");
+        });
+    }
+
+    // ✅ ADD THIS METHOD if it doesn't exist
+    private void showImageError() {
+        javafx.application.Platform.runLater(() -> {
+            if (exerciseImageView != null) {
+                exerciseImageView.setVisible(false);
+            }
+            if (imageLoadingIndicator != null) {
+                imageLoadingIndicator.setVisible(false);
+            }
+            if (imagePlaceholder != null) {
+                imagePlaceholder.setVisible(true);
+            }
+            System.err.println("⚠️ Showing placeholder due to image error");
+        });
+    }
+    private void handleExerciseSelection(Exercise exercise) {
+        if (exercise == null) {
+            System.err.println("⚠️ handleExerciseSelection called with null exercise");
+            return;
+        }
+
+        System.out.println("✅ Exercise selected: " + exercise.getName());
+
+        // Display exercise details in the text area
+        displayExerciseDetails(exercise);
+
+        // ✅ Load the exercise GIF
+        loadExerciseImage(exercise);
+    }
+
+
+    private String getExerciseImageUrl(Exercise exercise) {
+        String exerciseName = exercise.getName().toLowerCase().trim();
+
+        // Comprehensive exercise image database - ALL 69 EXERCISES
+        Map<String, String> exerciseImages = new HashMap<>();
+
+        // ==================== CHEST EXERCISES (9) ====================
+        exerciseImages.put("bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif");
+        exerciseImages.put("incline bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Incline-Bench-Press.gif");
+        exerciseImages.put("decline bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Barbell-Bench-Press.gif");
+        exerciseImages.put("dumbbell press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Bench-Press.gif");
+        exerciseImages.put("incline dumbbell press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif");
+        exerciseImages.put("chest fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Fly.gif");
+        exerciseImages.put("cable fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Cross-over-Variation.gif");
+        exerciseImages.put("push-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-up.gif");
+        exerciseImages.put("chest dips", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dips.gif");
+
+        // ==================== BACK EXERCISES (7) ====================
+        exerciseImages.put("deadlifts", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Deadlift.gif");
+        exerciseImages.put("barbell row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Row.gif");
+        exerciseImages.put("pull-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif");
+        exerciseImages.put("lat pulldown", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif");
+        exerciseImages.put("seated cable row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif");
+        exerciseImages.put("t-bar row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/T-Bar-Row.gif");
+        exerciseImages.put("one-arm dumbbell row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/One-Arm-Dumbbell-Row.gif");
+
+        // ==================== SHOULDER EXERCISES (7) ====================
+        exerciseImages.put("overhead press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/barbell-standing-military-press.gif");
+        exerciseImages.put("dumbbell shoulder press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif");
+        exerciseImages.put("lateral raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif");
+        exerciseImages.put("front raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Front-Raise.gif");
+        exerciseImages.put("rear delt fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Rear-Delt-Fly.gif");
+        exerciseImages.put("face pull", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Face-Pull.gif");
+        exerciseImages.put("arnold press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Arnold-Press.gif");
+
+        // ==================== BICEPS EXERCISES (6) ====================
+        exerciseImages.put("bicep curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif");
+        exerciseImages.put("barbell curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif");
+        exerciseImages.put("hammer curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hammer-Curl.gif");
+        exerciseImages.put("preacher curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Preacher-Curl.gif");
+        exerciseImages.put("cable curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Curl.gif");
+        exerciseImages.put("concentration curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Concentration-Curl.gif");
+
+        // ==================== TRICEPS EXERCISES (6) ====================
+        exerciseImages.put("tricep dips", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bench-Dips.gif");
+        exerciseImages.put("close-grip bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Close-grip-Bench-Press.gif");
+        exerciseImages.put("tricep pushdown", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Pushdown.gif");
+        exerciseImages.put("overhead tricep extension", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Overhead-Triceps-Extension.gif");
+        exerciseImages.put("skull crushers", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Lying-Triceps-Extension.gif");
+        exerciseImages.put("diamond push-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif");
+
+        // ==================== FOREARMS EXERCISES (3) ====================
+        exerciseImages.put("wrist curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wrist-Curl.gif");
+        exerciseImages.put("reverse wrist curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Reverse-Wrist-Curl.gif");
+        exerciseImages.put("farmer's walk", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Farmers-Walk.gif");
+
+        // ==================== ABS EXERCISES (6) ====================
+        exerciseImages.put("planks", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif");
+        exerciseImages.put("crunches", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Crunch.gif");
+        exerciseImages.put("leg raises", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Raise.gif");
+        exerciseImages.put("russian twists", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif");
+        exerciseImages.put("cable crunch", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Crunch.gif");
+        exerciseImages.put("hanging knee raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hanging-Leg-Raise.gif");
+
+        // ==================== OBLIQUES EXERCISES (3) ====================
+        exerciseImages.put("side plank", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Side-Plank.gif");
+        exerciseImages.put("bicycle crunches", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif");
+        exerciseImages.put("wood chops", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Wood-Chop.gif");
+
+        // ==================== LOWER BACK EXERCISES (3) ====================
+        exerciseImages.put("back extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hyperextension.gif");
+        exerciseImages.put("good mornings", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Good-Morning.gif");
+        exerciseImages.put("superman", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Superman-Exercise.gif");
+
+        // ==================== GLUTES EXERCISES (4) ====================
+        exerciseImages.put("hip thrusts", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif");
+        exerciseImages.put("glute bridges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/glute-bridge.gif");
+        exerciseImages.put("bulgarian split squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bulgarian-Split-Squat.gif");
+        exerciseImages.put("cable kickbacks", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Kickback.gif");
+
+        // ==================== QUADRICEPS EXERCISES (6) ====================
+        exerciseImages.put("squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Squat.gif");
+        exerciseImages.put("front squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Front-Squat.gif");
+        exerciseImages.put("leg press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-PRESS.gif");
+        exerciseImages.put("lunges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunge.gif");
+        exerciseImages.put("leg extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-extension.gif");
+        exerciseImages.put("walking lunges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Walking-Lunge.gif");
+
+        // ==================== HAMSTRINGS EXERCISES (4) ====================
+        exerciseImages.put("romanian deadlift", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Romanian-Deadlift.gif");
+        exerciseImages.put("leg curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Curl.gif");
+        exerciseImages.put("nordic curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Nordic-Hamstring-Curl.gif");
+        exerciseImages.put("stiff-leg deadlift", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Stiff-Leg-Barbell-Deadlift.gif");
+
+        // ==================== CALVES EXERCISES (3) ====================
+        exerciseImages.put("standing calf raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Calf-Raise.gif");
+        exerciseImages.put("seated calf raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Calf-Raise.gif");
+        exerciseImages.put("jump rope", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Rope.gif");
+
+        // ==================== NECK EXERCISES (2) ====================
+        exerciseImages.put("neck curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Curl.gif");
+        exerciseImages.put("neck extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Extension.gif");
+
+        // Try exact match first
+        if (exerciseImages.containsKey(exerciseName)) {
+            System.out.println("✅ Found exact match for: " + exerciseName);
+            return exerciseImages.get(exerciseName);
+        }
+
+        // Try partial match (handles variations like "Dumbbell Curls" vs "Bicep Curls")
+        for (Map.Entry<String, String> entry : exerciseImages.entrySet()) {
+            if (exerciseName.contains(entry.getKey()) || entry.getKey().contains(exerciseName)) {
+                System.out.println("✅ Found partial match: " + exerciseName + " -> " + entry.getKey());
+                return entry.getValue();
+            }
+        }
+
+        // Fallback: Use muscle group placeholder
+        System.out.println("⚠️ No image found for: " + exerciseName + " - using fallback");
+        return getPlaceholderImageByMuscleGroup(exercise.getMuscleGroup());
+    }
+
+    // Fallback placeholder images by muscle group
+    private String getPlaceholderImageByMuscleGroup(String muscleGroup) {
+        return switch (muscleGroup.toLowerCase()) {
+            case "chest" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif";
+            case "back" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Row.gif";
+            case "shoulders" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif";
+            case "biceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif";
+            case "triceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Pushdown.gif";
+            case "forearms" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wrist-Curl.gif";
+            case "abs" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Crunch.gif";
+            case "obliques" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif";
+            case "lower back" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hyperextension.gif";
+            case "glutes" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif";
+            case "quadriceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Squat.gif";
+            case "hamstrings" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Curl.gif";
+            case "calves" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Calf-Raise.gif";
+            case "neck" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Curl.gif";
+            default -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif";
+        };
+    }
+
+
+
+    /**
+     * Displays detailed information about an exercise in the description area
+     */
+    private void displayExerciseDetails(Exercise exercise) {
+        if (exercise == null) {
+            System.err.println("⚠️ displayExerciseDetails called with null exercise");
+            return;
+        }
+
+        if (exerciseDescriptionArea == null) {
+            System.err.println("⚠️ exerciseDescriptionArea is null");
+            return;
+        }
+
+        String formattedInstructions = String.format(
+                "🏋️ EXERCISE: %s\n\n" +
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                        "📋 INSTRUCTIONS:\n%s\n\n" +
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                        "🎯 MUSCLE GROUP: %s\n" +
+                        "🔧 EQUIPMENT: %s %s\n" +
+                        "⭐ DIFFICULTY: %s %s",
+                exercise.getName().toUpperCase(),
+                exercise.getInstructions(),
+                exercise.getMuscleGroup(),
+                exercise.getEquipmentEmoji(),
+                exercise.getEquipment(),
+                exercise.getDifficultyEmoji(),
+                exercise.getDifficulty()
+        );
+
+        exerciseDescriptionArea.setText(formattedInstructions);
+        exerciseDescriptionArea.setStyle(
+                "-fx-font-size: 15px; " +
+                        "-fx-font-weight: 600; " +
+                        "-fx-text-fill: #FFFFFF; " +
+                        "-fx-control-inner-background: rgba(10, 10, 10, 0.98); " +
+                        "-fx-background-color: rgba(10, 10, 10, 0.98); " +
+                        "-fx-background-radius: 12px; " +
+                        "-fx-border-color: #00f5ff; " +
+                        "-fx-border-width: 2px; " +
+                        "-fx-border-radius: 12px; " +
+                        "-fx-padding: 10px; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,245,255,0.3), 10, 0, 0, 4);"
+        );
+
+        System.out.println("📝 Displayed details for: " + exercise.getName());
+    }
+
+    // Helper class for muscle regions
+    private static class MuscleMapRegion {
+        String name;
+        double x, y, width, height;
+        String color;
+
+        MuscleMapRegion(String name, double x, double y, double width, double height, String color) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.color = color;
+        }
+    }
+
 }
 

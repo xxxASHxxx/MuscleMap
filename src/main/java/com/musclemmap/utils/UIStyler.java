@@ -339,17 +339,14 @@ public class UIStyler {
      * Elegant list view with smooth styling
      */
     public static void styleListView(ListView<?> listView) {
-        String bgColor = BG_DEEP;
-
         listView.setStyle(
-                "-fx-background-color: " + bgColor + "; " +
-                        "-fx-border-color: rgba(255,255,255,0.1); " +
-                        "-fx-border-width: 1px; " +
-                        "-fx-border-radius: 12px; " +
-                        "-fx-background-radius: 12px; " +
-                        "-fx-effect: " +
-                        "dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 4), " +
-                        "innershadow(gaussian, rgba(255,255,255,0.02), 1, 0, 0, 1);"
+                "-fx-background-color: #1f1f1f; " +
+                        "-fx-control-inner-background: #2b2b2b; " +
+                        "-fx-border-color: #00d4ff; " +
+                        "-fx-border-radius: 10px; " +
+                        "-fx-background-radius: 10px; " +
+                        "-fx-border-width: 2px; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 10, 0, 0, 5);"
         );
     }
 

@@ -615,3 +615,51 @@
     -fx-background-color: #00d4ff;
     -fx-text-fill: #FFFFFF;
 }
+/* ListView Styling */
+.list-view {
+    -fx-background-color: #1f1f1f;
+    -fx-background-insets: 0;
+    -fx-padding: 5px;
+}
+
+.list-view .list-cell {
+    -fx-background-color: #2b2b2b;
+    -fx-background-radius: 8px;
+    -fx-padding: 4px;
+    -fx-margin: 2px;
+}
+
+.list-view .list-cell:hover {
+    -fx-background-color: #3a3a3a;
+    -fx-cursor: hand;
+}
+
+.list-view .list-cell:selected {
+    -fx-background-color: linear-gradient(to right, #00d4ff, #0099cc);
+}
+
+.list-view .list-cell:empty {
+    -fx-background-color: transparent;
+}
+
+/* TextArea Styling */
+.text-area {
+    -fx-background-color: #1f1f1f;
+    -fx-text-fill: white;
+}
+
+.text-area .content {
+    -fx-background-color: #2b2b2b;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: #2b2b2b;
+}
+
+.text-area .scroll-pane .viewport {
+    -fx-background-color: #2b2b2b;
+}
+
+.text-area .scroll-pane .content {
+    -fx-background-color: #2b2b2b;
+}

@@ -217,6 +217,9 @@ public class DatabaseHelper {
 
     private void initializeDatabase() {
         try {
+            Statement stmt = connection.createStatement();
+
+            // USERS TABLE
             String createUsersTable = """
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,7 +231,9 @@ public class DatabaseHelper {
             workout_streak INTEGER DEFAULT 0,
             total_volume_lifted REAL DEFAULT 0.0
         )""";
+            stmt.execute(createUsersTable);
 
+            // ✅ EXERCISES TABLE - ADDED gif_url COLUMN
             String createExercisesTable = """
         CREATE TABLE IF NOT EXISTS exercises (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,9 +241,12 @@ public class DatabaseHelper {
             muscle_group TEXT NOT NULL,
             equipment TEXT NOT NULL,
             difficulty TEXT NOT NULL,
-            instructions TEXT
+            instructions TEXT,
+            gif_url TEXT
         )""";
+            stmt.execute(createExercisesTable);
 
+            // WORKOUTS TABLE
             String createWorkoutsTable = """
         CREATE TABLE IF NOT EXISTS workouts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,74 +258,229 @@ public class DatabaseHelper {
             notes TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )""";
-
-            String createSetsTable = """
-CREATE TABLE IF NOT EXISTS workout_sets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    workout_id INTEGER NOT NULL,
-    exercise_name TEXT NOT NULL,
-    muscle_group TEXT,
-    reps INTEGER NOT NULL,
-    weight REAL NOT NULL,
-    set_number INTEGER DEFAULT 1,
-    set_type TEXT DEFAULT 'NORMAL',
-    completed BOOLEAN DEFAULT 0,
-    FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
-)""";
-
-
-            Statement stmt = connection.createStatement();
-            stmt.execute(createUsersTable);
-            stmt.execute(createExercisesTable);
             stmt.execute(createWorkoutsTable);
+
+            // SETS TABLE
+            String createSetsTable = """
+        CREATE TABLE IF NOT EXISTS sets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            workout_id INTEGER NOT NULL,
+            exercise_id INTEGER NOT NULL,
+            set_number INTEGER NOT NULL,
+            weight REAL NOT NULL,
+            reps INTEGER NOT NULL,
+            volume REAL GENERATED ALWAYS AS (weight * reps) STORED,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
+            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+        )""";
             stmt.execute(createSetsTable);
 
+            // PERSONAL RECORDS TABLE
+            String createPersonalRecordsTable = """
+        CREATE TABLE IF NOT EXISTS personal_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            exercise_id INTEGER NOT NULL,
+            max_weight REAL NOT NULL,
+            max_reps INTEGER NOT NULL,
+            date_achieved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
+            UNIQUE(user_id, exercise_id)
+        )""";
+            stmt.execute(createPersonalRecordsTable);
+
+            // WORKOUT ROUTINES TABLE
+            String createRoutinesTable = """
+        CREATE TABLE IF NOT EXISTS workout_routines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""";
+            stmt.execute(createRoutinesTable);
+
+            // ROUTINE EXERCISES TABLE (Junction table)
+            String createRoutineExercisesTable = """
+        CREATE TABLE IF NOT EXISTS routine_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            routine_id INTEGER NOT NULL,
+            exercise_id INTEGER NOT NULL,
+            sets INTEGER DEFAULT 3,
+            target_reps INTEGER DEFAULT 10,
+            order_index INTEGER DEFAULT 0,
+            FOREIGN KEY (routine_id) REFERENCES workout_routines(id) ON DELETE CASCADE,
+            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+        )""";
+            stmt.execute(createRoutineExercisesTable);
+
+            // BODY METRICS TABLE
+            String createBodyMetricsTable = """
+        CREATE TABLE IF NOT EXISTS body_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            weight REAL,
+            body_fat_percentage REAL,
+            muscle_mass REAL,
+            notes TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""";
+            stmt.execute(createBodyMetricsTable);
+
+            stmt.close();
+            System.out.println("✅ Database tables initialized successfully with gif_url column!");
+
+            // Insert sample exercises
             insertSampleExercises();
-            System.out.println("📋 Database tables initialized!");
 
         } catch (SQLException e) {
-            System.err.println("❌ Database initialization failed: " + e.getMessage());
+            System.err.println("❌ Error initializing database: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     private void insertSampleExercises() {
         try {
-            String checkExercises = "SELECT COUNT(*) FROM exercises";
-            Statement stmt = connection.createStatement();
-            ResultSet rs = stmt.executeQuery(checkExercises);
+            // ✅ Check if exercises already exist
+            String checkSql = "SELECT COUNT(*) FROM exercises";
+            Statement checkStmt = connection.createStatement();
+            ResultSet rs = checkStmt.executeQuery(checkSql);
 
-            if (rs.next() && rs.getInt(1) == 0) {
-                String insertSql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions) VALUES (?, ?, ?, ?, ?)";
-                PreparedStatement pstmt = connection.prepareStatement(insertSql);
-
-                Object[][] exercises = {
-                        {"Bench Press", "Chest", "Barbell", "Intermediate", "Lie on bench, lower bar to chest, press up"},
-                        {"Squats", "Quadriceps", "Barbell", "Intermediate", "Lower body until thighs parallel"},
-                        {"Pull-ups", "Back", "Bodyweight", "Intermediate", "Hang from bar, pull body up"},
-                        {"Push-ups", "Chest", "Bodyweight", "Beginner", "Lower body, push back up"},
-                        {"Deadlifts", "Back", "Barbell", "Advanced", "Lift bar from ground to hip level"},
-                        {"Overhead Press", "Shoulders", "Barbell", "Intermediate", "Press bar overhead"},
-                        {"Bicep Curls", "Biceps", "Dumbbell", "Beginner", "Curl weights to shoulders"},
-                        {"Planks", "Abs", "Bodyweight", "Beginner", "Hold plank position"},
-                        {"Tricep Dips", "Triceps", "Bodyweight", "Intermediate", "Lower body between bars, push up"},
-                        {"Lunges", "Quadriceps", "Bodyweight", "Beginner", "Step forward, lower back knee"}
-                };
-
-                for (Object[] ex : exercises) {
-                    pstmt.setString(1, (String) ex[0]);
-                    pstmt.setString(2, (String) ex[1]);
-                    pstmt.setString(3, (String) ex[2]);
-                    pstmt.setString(4, (String) ex[3]);
-                    pstmt.setString(5, (String) ex[4]);
-                    pstmt.executeUpdate();
-                }
-                pstmt.close();
-                System.out.println("💪 Sample exercises inserted!");
+            if (rs.next() && rs.getInt(1) > 0) {
+                System.out.println("✅ Exercises already exist in database (" + rs.getInt(1) + " exercises)");
+                rs.close();
+                checkStmt.close();
+                return;
             }
             rs.close();
-            stmt.close();
+            checkStmt.close();
+
+            // ✅ FIXED: Now includes ALL 6 columns (with empty gif_url)
+            String insertSql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions, gif_url) VALUES (?, ?, ?, ?, ?, ?)";
+            PreparedStatement pstmt = connection.prepareStatement(insertSql);
+
+            // ✅ COMPLETE 69 EXERCISES - ALL 14 MUSCLE GROUPS
+            Object[][] exercises = {
+                    // CHEST (9)
+                    {"Bench Press", "Chest", "Barbell", "Intermediate", "Lie on bench, lower bar to chest, press up", ""},
+                    {"Incline Bench Press", "Chest", "Barbell", "Intermediate", "Set bench to 30-45 degrees, press barbell upward", ""},
+                    {"Decline Bench Press", "Chest", "Barbell", "Intermediate", "Set bench to decline, press barbell from lower chest", ""},
+                    {"Dumbbell Press", "Chest", "Dumbbell", "Beginner", "Press dumbbells from chest level to full extension", ""},
+                    {"Incline Dumbbell Press", "Chest", "Dumbbell", "Intermediate", "Press dumbbells on incline bench", ""},
+                    {"Chest Fly", "Chest", "Dumbbell", "Intermediate", "Open arms wide, bring dumbbells together above chest", ""},
+                    {"Cable Fly", "Chest", "Cable", "Intermediate", "Pull cables from sides to center with slight bend in elbows", ""},
+                    {"Push-ups", "Chest", "Bodyweight", "Beginner", "Lower body, push back up", ""},
+                    {"Chest Dips", "Chest", "Bodyweight", "Intermediate", "Lower body between bars, focusing on chest stretch", ""},
+
+                    // BACK (7)
+                    {"Deadlifts", "Back", "Barbell", "Advanced", "Lift bar from ground to hip level", ""},
+                    {"Barbell Row", "Back", "Barbell", "Intermediate", "Bend forward, pull barbell to lower chest", ""},
+                    {"Pull-ups", "Back", "Bodyweight", "Intermediate", "Hang from bar, pull body up", ""},
+                    {"Lat Pulldown", "Back", "Machine", "Beginner", "Pull bar down to upper chest with wide grip", ""},
+                    {"Seated Cable Row", "Back", "Cable", "Beginner", "Pull handle to torso, squeeze shoulder blades", ""},
+                    {"T-Bar Row", "Back", "Barbell", "Intermediate", "Pull loaded end of barbell to chest", ""},
+                    {"One-Arm Dumbbell Row", "Back", "Dumbbell", "Intermediate", "Support on bench, row dumbbell to hip", ""},
+
+                    // SHOULDERS (7)
+                    {"Overhead Press", "Shoulders", "Barbell", "Intermediate", "Press bar overhead", ""},
+                    {"Dumbbell Shoulder Press", "Shoulders", "Dumbbell", "Intermediate", "Press dumbbells overhead from shoulder level", ""},
+                    {"Lateral Raise", "Shoulders", "Dumbbell", "Beginner", "Raise dumbbells to sides until arms parallel to ground", ""},
+                    {"Front Raise", "Shoulders", "Dumbbell", "Beginner", "Raise dumbbells forward to shoulder height", ""},
+                    {"Rear Delt Fly", "Shoulders", "Dumbbell", "Intermediate", "Bend forward, raise dumbbells to sides", ""},
+                    {"Face Pull", "Shoulders", "Cable", "Intermediate", "Pull rope to face level, flare elbows out", ""},
+                    {"Arnold Press", "Shoulders", "Dumbbell", "Advanced", "Rotate palms while pressing dumbbells overhead", ""},
+
+                    // BICEPS (6)
+                    {"Bicep Curls", "Biceps", "Dumbbell", "Beginner", "Curl weights to shoulders", ""},
+                    {"Barbell Curl", "Biceps", "Barbell", "Beginner", "Curl barbell to shoulders with underhand grip", ""},
+                    {"Hammer Curl", "Biceps", "Dumbbell", "Beginner", "Curl dumbbells with neutral grip", ""},
+                    {"Preacher Curl", "Biceps", "Barbell", "Intermediate", "Curl barbell on preacher bench for isolation", ""},
+                    {"Cable Curl", "Biceps", "Cable", "Beginner", "Curl cable handle to shoulders", ""},
+                    {"Concentration Curl", "Biceps", "Dumbbell", "Intermediate", "Sit, rest elbow on thigh, curl dumbbell up", ""},
+
+                    // TRICEPS (6)
+                    {"Tricep Dips", "Triceps", "Bodyweight", "Intermediate", "Lower body between bars, push up", ""},
+                    {"Close-Grip Bench Press", "Triceps", "Barbell", "Intermediate", "Bench press with hands shoulder-width apart", ""},
+                    {"Tricep Pushdown", "Triceps", "Cable", "Beginner", "Push cable bar down until arms fully extended", ""},
+                    {"Overhead Tricep Extension", "Triceps", "Dumbbell", "Intermediate", "Extend dumbbell overhead, lower behind head", ""},
+                    {"Skull Crushers", "Triceps", "Barbell", "Intermediate", "Lower barbell to forehead, extend back up", ""},
+                    {"Diamond Push-ups", "Triceps", "Bodyweight", "Intermediate", "Push-ups with hands forming diamond shape", ""},
+
+                    // FOREARMS (3)
+                    {"Wrist Curls", "Forearms", "Dumbbell", "Beginner", "Curl wrists upward with forearms on thighs", ""},
+                    {"Reverse Wrist Curls", "Forearms", "Dumbbell", "Beginner", "Curl wrists upward with overhand grip", ""},
+                    {"Farmer's Walk", "Forearms", "Dumbbell", "Intermediate", "Walk while holding heavy dumbbells at sides", ""},
+
+                    // ABS (6)
+                    {"Planks", "Abs", "Bodyweight", "Beginner", "Hold plank position", ""},
+                    {"Crunches", "Abs", "Bodyweight", "Beginner", "Lie on back, lift shoulders off ground", ""},
+                    {"Leg Raises", "Abs", "Bodyweight", "Intermediate", "Lie on back, raise legs to vertical", ""},
+                    {"Russian Twists", "Abs", "Bodyweight", "Intermediate", "Sit with feet elevated, twist torso side to side", ""},
+                    {"Cable Crunch", "Abs", "Cable", "Intermediate", "Kneel, crunch torso down against cable resistance", ""},
+                    {"Hanging Knee Raise", "Abs", "Bodyweight", "Advanced", "Hang from bar, raise knees to chest", ""},
+
+                    // OBLIQUES (3)
+                    {"Side Plank", "Obliques", "Bodyweight", "Intermediate", "Hold body sideways on one forearm", ""},
+                    {"Bicycle Crunches", "Obliques", "Bodyweight", "Beginner", "Alternate bringing opposite elbow to knee", ""},
+                    {"Wood Chops", "Obliques", "Cable", "Intermediate", "Pull cable diagonally across body", ""},
+
+                    // LOWER BACK (3)
+                    {"Back Extensions", "Lower Back", "Bodyweight", "Beginner", "Lie face down, lift upper body off ground", ""},
+                    {"Good Mornings", "Lower Back", "Barbell", "Intermediate", "Bend forward at hips with barbell on shoulders", ""},
+                    {"Superman", "Lower Back", "Bodyweight", "Beginner", "Lie face down, lift arms and legs simultaneously", ""},
+
+                    // GLUTES (4)
+                    {"Hip Thrusts", "Glutes", "Barbell", "Intermediate", "Thrust hips upward with barbell on hips", ""},
+                    {"Glute Bridges", "Glutes", "Bodyweight", "Beginner", "Lie on back, lift hips until body forms straight line", ""},
+                    {"Bulgarian Split Squats", "Glutes", "Dumbbell", "Advanced", "Single leg squat with rear foot elevated", ""},
+                    {"Cable Kickbacks", "Glutes", "Cable", "Beginner", "Kick leg back against cable resistance", ""},
+
+                    // QUADRICEPS (6)
+                    {"Squats", "Quadriceps", "Barbell", "Intermediate", "Lower body until thighs parallel", ""},
+                    {"Front Squats", "Quadriceps", "Barbell", "Advanced", "Squat with barbell held at front of shoulders", ""},
+                    {"Leg Press", "Quadriceps", "Machine", "Beginner", "Push platform away with feet", ""},
+                    {"Lunges", "Quadriceps", "Bodyweight", "Beginner", "Step forward, lower back knee", ""},
+                    {"Leg Extensions", "Quadriceps", "Machine", "Beginner", "Extend legs against resistance", ""},
+                    {"Walking Lunges", "Quadriceps", "Dumbbell", "Intermediate", "Lunge forward continuously while walking", ""},
+
+                    // HAMSTRINGS (4)
+                    {"Romanian Deadlift", "Hamstrings", "Barbell", "Intermediate", "Lower barbell by bending at hips, legs nearly straight", ""},
+                    {"Leg Curls", "Hamstrings", "Machine", "Beginner", "Curl legs upward against resistance", ""},
+                    {"Nordic Curls", "Hamstrings", "Bodyweight", "Advanced", "Lower body forward with knees fixed", ""},
+                    {"Stiff-Leg Deadlift", "Hamstrings", "Barbell", "Intermediate", "Deadlift with minimal knee bend", ""},
+
+                    // CALVES (3)
+                    {"Standing Calf Raise", "Calves", "Machine", "Beginner", "Raise heels as high as possible, lower slowly", ""},
+                    {"Seated Calf Raise", "Calves", "Machine", "Beginner", "Raise heels with knees bent", ""},
+                    {"Jump Rope", "Calves", "Bodyweight", "Beginner", "Jump rope continuously for calf work", ""},
+
+                    // NECK (2)
+                    {"Neck Curls", "Neck", "Bodyweight", "Beginner", "Lie on back, lift head toward chest", ""},
+                    {"Neck Extensions", "Neck", "Bodyweight", "Beginner", "Lie face down, lift head upward"}
+            };
+
+            int insertCount = 0;
+            for (Object[] ex : exercises) {
+                pstmt.setString(1, (String) ex[0]);  // name
+                pstmt.setString(2, (String) ex[1]);  // muscle_group
+                pstmt.setString(3, (String) ex[2]);  // equipment
+                pstmt.setString(4, (String) ex[3]);  // difficulty
+                pstmt.setString(5, (String) ex[4]);  // instructions
+                pstmt.setString(6, (String) ex[5]);  // gif_url (empty for now)
+                pstmt.executeUpdate();
+                insertCount++;
+            }
+            pstmt.close();
+
+            System.out.println("💪 Successfully inserted " + insertCount + " exercises!");
+
         } catch (SQLException e) {
-            System.err.println("⚠️ Error inserting sample exercises: " + e.getMessage());
+            System.err.println("⚠️ Error inserting exercises: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -326,13 +489,14 @@ CREATE TABLE IF NOT EXISTS workout_sets (
     public int saveWorkout(Workout workout, int userId) {
         try {
             // Insert workout
-            String workoutSql = "INSERT INTO workouts (user_id, name, start_time, end_time) VALUES (?, ?, ?, ?)";
+            String workoutSql = "INSERT INTO workouts (user_id, name, start_time, end_time, total_volume) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement workoutStmt = connection.prepareStatement(workoutSql, Statement.RETURN_GENERATED_KEYS);
 
             workoutStmt.setInt(1, userId);
             workoutStmt.setString(2, workout.getName());
-            workoutStmt.setString(3, workout.getStartTime().toString());
-            workoutStmt.setString(4, workout.getEndTime() != null ? workout.getEndTime().toString() : LocalDateTime.now().toString());
+            workoutStmt.setTimestamp(3, Timestamp.valueOf(workout.getStartTime()));
+            workoutStmt.setTimestamp(4, workout.getEndTime() != null ? Timestamp.valueOf(workout.getEndTime()) : Timestamp.valueOf(LocalDateTime.now()));
+            workoutStmt.setDouble(5, workout.getTotalVolume());
 
             int affectedRows = workoutStmt.executeUpdate();
 
@@ -354,21 +518,22 @@ CREATE TABLE IF NOT EXISTS workout_sets (
 
             // Save all sets
             if (workout.getSets() != null && !workout.getSets().isEmpty()) {
-                String setSql = "INSERT INTO workout_sets (workout_id, exercise_name, reps, weight, set_number) VALUES (?, ?, ?, ?, ?)";
+                String setSql = "INSERT INTO workout_sets (workout_id, exercise_name, muscle_group, reps, weight, set_number) VALUES (?, ?, ?, ?, ?, ?)";
                 PreparedStatement setStmt = connection.prepareStatement(setSql);
 
                 for (int i = 0; i < workout.getSets().size(); i++) {
                     WorkoutSet set = workout.getSets().get(i);
                     setStmt.setInt(1, workoutId);
                     setStmt.setString(2, set.getExercise().getName());
-                    setStmt.setInt(3, set.getReps());
-                    setStmt.setDouble(4, set.getWeight());
-                    setStmt.setInt(5, i + 1);
+                    setStmt.setString(3, set.getExercise().getMuscleGroup());
+                    setStmt.setInt(4, set.getReps());
+                    setStmt.setDouble(5, set.getWeight());
+                    setStmt.setInt(6, i + 1);
                     setStmt.addBatch();
                 }
 
                 int[] setResults = setStmt.executeBatch();
-                System.out.println("✅ Saved " + setResults.length + " sets");
+                System.out.println("✅ Saved " + setResults.length + " sets");  // ✅ FIXED - removed ()
                 setStmt.close();
             }
 
@@ -600,14 +765,16 @@ CREATE TABLE IF NOT EXISTS workout_sets (
             ResultSet rs = stmt.executeQuery(sql);
 
             while (rs.next()) {
+                // ✅ FIXED: Use 7-parameter constructor
                 Exercise exercise = new Exercise(
+                        rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("muscle_group"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
-                        rs.getString("instructions")
+                        rs.getString("instructions"),
+                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
                 );
-                exercise.setId(rs.getInt("id"));
                 exercises.add(exercise);
             }
 
@@ -628,14 +795,16 @@ CREATE TABLE IF NOT EXISTS workout_sets (
 
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
+                // ✅ FIXED: Use 7-parameter constructor
                 exercise = new Exercise(
+                        rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("muscle_group"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
-                        rs.getString("instructions")
+                        rs.getString("instructions"),
+                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
                 );
-                exercise.setId(rs.getInt("id"));
             }
 
             rs.close();
@@ -656,21 +825,26 @@ CREATE TABLE IF NOT EXISTS workout_sets (
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
+                // ✅ FIXED: Use 7-parameter constructor that includes gif_url
                 Exercise exercise = new Exercise(
+                        rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("muscle_group"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
-                        rs.getString("instructions")
+                        rs.getString("instructions"),
+                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
                 );
-                exercise.setId(rs.getInt("id"));
                 exercises.add(exercise);
             }
 
             rs.close();
             pstmt.close();
+
+            System.out.println("✅ Loaded " + exercises.size() + " exercises for " + muscleGroup);
         } catch (SQLException e) {
             System.err.println("❌ Failed to load exercises by muscle group: " + e.getMessage());
+            e.printStackTrace();
         }
         return exercises;
     }
