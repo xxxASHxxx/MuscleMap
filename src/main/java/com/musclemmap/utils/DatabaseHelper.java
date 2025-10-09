@@ -221,121 +221,114 @@ public class DatabaseHelper {
             Statement stmt = connection.createStatement();
 
             // USERS TABLE
-            String createUsersTable = """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP,
-            workout_streak INTEGER DEFAULT 0,
-            total_volume_lifted REAL DEFAULT 0.0
-        )""";
+            String createUsersTable = "CREATE TABLE IF NOT EXISTS users ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "username TEXT UNIQUE NOT NULL, "
+                    + "email TEXT UNIQUE NOT NULL, "
+                    + "passwordhash TEXT NOT NULL, "
+                    + "createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+                    + "lastlogin TIMESTAMP, "
+                    + "workoutstreak INTEGER DEFAULT 0, "
+                    + "totalvolumelifted REAL DEFAULT 0.0"
+                    + ")";
             stmt.execute(createUsersTable);
 
-            // ✅ EXERCISES TABLE - ADDED gif_url COLUMN
-            String createExercisesTable = """
-    CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        musclegroup TEXT NOT NULL,
-        equipment TEXT NOT NULL,
-        difficulty TEXT NOT NULL,
-        instructions TEXT,
-        gif_url TEXT
-    )
-""";
+            // ✅ EXERCISES TABLE - ADDED gifurl COLUMN
+            String createExercisesTable = "CREATE TABLE IF NOT EXISTS exercises ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "name TEXT UNIQUE NOT NULL, "
+                    + "musclegroup TEXT NOT NULL, "
+                    + "equipment TEXT NOT NULL, "
+                    + "difficulty TEXT NOT NULL, "
+                    + "instructions TEXT, "
+                    + "gifurl TEXT"  // ✅ ADDED THIS!
+                    + ")";
 
             stmt.execute(createExercisesTable);
 
             // WORKOUTS TABLE
-            String createWorkoutsTable = """
-        CREATE TABLE IF NOT EXISTS workouts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            start_time TIMESTAMP NOT NULL,
-            end_time TIMESTAMP,
-            total_volume REAL DEFAULT 0.0,
-            notes TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )""";
+            String createWorkoutsTable = "CREATE TABLE IF NOT EXISTS workouts ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "userid INTEGER NOT NULL, "
+                    + "name TEXT NOT NULL, "
+                    + "starttime TIMESTAMP NOT NULL, "
+                    + "endtime TIMESTAMP, "
+                    + "totalvolume REAL DEFAULT 0.0, "
+                    + "notes TEXT, "
+                    + "FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE"
+                    + ")";
             stmt.execute(createWorkoutsTable);
 
             // SETS TABLE
-            String createSetsTable = """
-        CREATE TABLE IF NOT EXISTS sets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            workout_id INTEGER NOT NULL,
-            exercise_id INTEGER NOT NULL,
-            set_number INTEGER NOT NULL,
-            weight REAL NOT NULL,
-            reps INTEGER NOT NULL,
-            volume REAL GENERATED ALWAYS AS (weight * reps) STORED,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
-            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
-        )""";
+            String createSetsTable = "CREATE TABLE IF NOT EXISTS workoutsets ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "workoutid INTEGER NOT NULL, "
+                    + "exercisename TEXT NOT NULL, "
+                    + "reps INTEGER NOT NULL, "
+                    + "weight REAL NOT NULL, "
+                    + "settype TEXT DEFAULT 'NORMAL', "
+                    + "completed BOOLEAN DEFAULT 0, "
+                    + "FOREIGN KEY (workoutid) REFERENCES workouts(id) ON DELETE CASCADE"
+                    + ")";
             stmt.execute(createSetsTable);
 
             // PERSONAL RECORDS TABLE
             String createPersonalRecordsTable = """
-        CREATE TABLE IF NOT EXISTS personal_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            exercise_id INTEGER NOT NULL,
-            max_weight REAL NOT NULL,
-            max_reps INTEGER NOT NULL,
-            date_achieved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
-            UNIQUE(user_id, exercise_id)
-        )""";
+                    CREATE TABLE IF NOT EXISTS personal_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        exercise_id INTEGER NOT NULL,
+                        max_weight REAL NOT NULL,
+                        max_reps INTEGER NOT NULL,
+                        date_achieved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
+                        UNIQUE(user_id, exercise_id)
+                    )""";
             stmt.execute(createPersonalRecordsTable);
 
             // WORKOUT ROUTINES TABLE
             String createRoutinesTable = """
-        CREATE TABLE IF NOT EXISTS workout_routines (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )""";
+                    CREATE TABLE IF NOT EXISTS workout_routines (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )""";
             stmt.execute(createRoutinesTable);
 
             // ROUTINE EXERCISES TABLE (Junction table)
             String createRoutineExercisesTable = """
-        CREATE TABLE IF NOT EXISTS routine_exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            routine_id INTEGER NOT NULL,
-            exercise_id INTEGER NOT NULL,
-            sets INTEGER DEFAULT 3,
-            target_reps INTEGER DEFAULT 10,
-            order_index INTEGER DEFAULT 0,
-            FOREIGN KEY (routine_id) REFERENCES workout_routines(id) ON DELETE CASCADE,
-            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
-        )""";
+                    CREATE TABLE IF NOT EXISTS routine_exercises (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        routine_id INTEGER NOT NULL,
+                        exercise_id INTEGER NOT NULL,
+                        sets INTEGER DEFAULT 3,
+                        target_reps INTEGER DEFAULT 10,
+                        order_index INTEGER DEFAULT 0,
+                        FOREIGN KEY (routine_id) REFERENCES workout_routines(id) ON DELETE CASCADE,
+                        FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+                    )""";
             stmt.execute(createRoutineExercisesTable);
 
             // BODY METRICS TABLE
             String createBodyMetricsTable = """
-        CREATE TABLE IF NOT EXISTS body_metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            weight REAL,
-            body_fat_percentage REAL,
-            muscle_mass REAL,
-            notes TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )""";
+                    CREATE TABLE IF NOT EXISTS body_metrics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        weight REAL,
+                        body_fat_percentage REAL,
+                        muscle_mass REAL,
+                        notes TEXT,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )""";
             stmt.execute(createBodyMetricsTable);
 
             stmt.close();
-            System.out.println("✅ Database tables initialized successfully with gif_url column!");
+            System.out.println("✅ Database tables initialized successfully with gifurl column!");
 
             // Insert sample exercises
             insertSampleExercises();
@@ -362,8 +355,8 @@ public class DatabaseHelper {
             rs.close();
             checkStmt.close();
 
-            // ✅ FIXED: Now includes ALL 6 columns (with empty gif_url)
-            String insertSql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions, gif_url) VALUES (?, ?, ?, ?, ?, ?)";
+            // ✅ FIXED: Now includes ALL 6 columns (with empty gifurl)
+            String insertSql = "INSERT INTO exercises (name, musclegroup, equipment, difficulty, instructions, gifurl) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(insertSql);
 
             // ✅ COMPLETE 69 EXERCISES - ALL 14 MUSCLE GROUPS
@@ -958,14 +951,14 @@ public class DatabaseHelper {
         return stats;
     }
     private void backfillGifUrlsIfMissing() {
-        final String select = "SELECT id, name, gif_url FROM exercises";
-        final String update = "UPDATE exercises SET gif_url = ? WHERE id = ?";
+        final String select = "SELECT id, name, gifurl FROM exercises";
+        final String update = "UPDATE exercises SET gifurl = ? WHERE id = ?";
         try (Statement s = connection.createStatement();
              ResultSet rs = s.executeQuery(select);
              PreparedStatement up = connection.prepareStatement(update)) {
             int patched = 0;
             while (rs.next()) {
-                String current = rs.getString("gif_url");
+                String current = rs.getString("gifurl");
                 if (current != null && !current.isBlank()) continue;
 
                 String name = rs.getString("name");
@@ -1000,9 +993,9 @@ public class DatabaseHelper {
                 }
             }
             up.executeBatch();
-            if (patched > 0) System.out.println("🔁 Backfilled gif_url for " + patched + " exercises.");
+            if (patched > 0) System.out.println("🔁 Backfilled gifurl for " + patched + " exercises.");
         } catch (Exception e) {
-            System.err.println("gif_url backfill failed: " + e.getMessage());
+            System.err.println("gifurl backfill failed: " + e.getMessage());
         }
     }
 
