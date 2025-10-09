@@ -248,11 +248,25 @@ public class Exercise {
 
     // ✅ GET GIF URL from mapping
     public String getGifUrl() {
-        if (gifUrl != null && !gifUrl.isEmpty()) {
-            return gifUrl;
-        }
-        return getExerciseImageUrl(this.name);
+        if (gifUrl != null && !gifUrl.isEmpty()) return gifUrl;
+
+        String key = (this.name == null ? "" : this.name)
+                .toLowerCase()
+                .replace('-', ' ')
+                .replace('_', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        // simple synonym normalization
+        if (key.equals("lat pull down")) key = "lat pulldown";
+        if (key.equals("barbell rows")) key = "barbell row";
+        if (key.equals("cable flies")) key = "cable fly";
+        if (key.equals("dumbbell flies")) key = "chest fly";
+        if (key.equals("push ups")) key = "push-ups";
+
+        return getExerciseImageUrl(key);
     }
+
 
     public void setGifUrl(String gifUrl) {
         this.gifUrl = gifUrl;

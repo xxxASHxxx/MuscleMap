@@ -42,6 +42,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import javafx.geometry.Insets;
 import javafx.stage.Stage;
+
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import java.util.*;
@@ -2996,33 +2998,78 @@ public class MainController implements Initializable {
         Task<Image> imageLoadTask = new Task<Image>() {
             @Override
             protected Image call() throws Exception {
-                // ✅ CHANGED: Use exercise.getGifUrl() instead of getExerciseImageUrl()
-                String imageUrl = exercise.getGifUrl();
+                // Primary URL (DB gif_url if present, else mapping via getGifUrl normalization)
+                String primaryUrl = exercise.getGifUrl();
 
-                if (imageUrl == null || imageUrl.isEmpty()) {
+                // Derive a secondary fallback by re-normalizing name → direct mapping
+                // This helps when DB has a stale/bad URL but the code map is correct.
+                String normalizedName = (exercise.getName() == null ? "" : exercise.getName())
+                        .toLowerCase()
+                        .replace('-', ' ')
+                        .replace('_', ' ')
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                if (normalizedName.equals("lat pull down")) normalizedName = "lat pulldown";
+                if (normalizedName.equals("barbell rows")) normalizedName = "barbell row";
+                if (normalizedName.equals("cable flies")) normalizedName = "cable fly";
+                if (normalizedName.equals("dumbbell flies")) normalizedName = "chest fly";
+                if (normalizedName.equals("push ups")) normalizedName = "push-ups";
+
+                // Access the static map through the same resolver you use internally
+                // by calling getExerciseImageUrl again with normalized key.
+                String fallbackUrl = null;
+                try {
+                    // Use reflection-safe call path: reuse the public getter path
+                    // If primaryUrl came from DB and is bad, fallback hits the code map.
+                    // Avoid duplicate if identical.
+                    String mapped = (exercise.getGifUrl() == null || exercise.getGifUrl().isBlank())
+                            ? null
+                            : null; // no-op branch; we compute explicit mapped below
+                    // Explicit mapped URL from code map
+                    // We expose the same mapping by calling getExerciseImageUrl with normalized name
+                    // via a small helper to avoid private access; replicate normalization logic:
+                    fallbackUrl = com.musclemmap.models.Exercise.class
+                            .getDeclaredMethod("getExerciseImageUrl", String.class)
+                            .trySetAccessible() ? (String) com.musclemmap.models.Exercise.class
+                            .getDeclaredMethod("getExerciseImageUrl", String.class)
+                            .invoke(null, normalizedName) : null;
+                } catch (Throwable ignore) {
+                    // If reflection is restricted, we’ll just not use a fallback mapping
+                    fallbackUrl = null;
+                }
+
+                // Decide candidate list, skipping duplicates/nulls
+                java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+                if (primaryUrl != null && !primaryUrl.isBlank()) candidates.add(primaryUrl);
+                if (fallbackUrl != null && !fallbackUrl.isBlank()) candidates.add(fallbackUrl);
+
+                if (candidates.isEmpty()) {
                     System.err.println("❌ No GIF URL found for: " + exercise.getName());
                     throw new Exception("No image URL available");
                 }
 
-                System.out.println("📥 Loading image from URL: " + imageUrl);
+                // Try each candidate in order
+                for (String url : candidates) {
+                    System.out.println("📥 Loading image from URL: " + url);
+                    Image image = new Image(url, true);
 
-                // Load with background loading enabled
-                Image image = new Image(imageUrl, true);
+                    // Wait for image to finish loading (increase attempts for slow networks/CDN)
+                    int attempts = 0;
+                    while (image.getProgress() < 1.0 && attempts < 80) { // 8 seconds max
+                        Thread.sleep(100);
+                        attempts++;
+                    }
 
-                // Wait for image to finish loading
-                int attempts = 0;
-                while (image.getProgress() < 1.0 && attempts < 50) {
-                    Thread.sleep(100);
-                    attempts++;
+                    if (!image.isError() && image.getWidth() > 0 && image.getHeight() > 0) {
+                        System.out.println("✅ Image loaded successfully! Size: " + image.getWidth() + "x" + image.getHeight());
+                        return image;
+                    }
+
+                    System.err.println("⚠️ Image load failed for " + exercise.getName() + " at URL: " + url +
+                            (image.getException() != null ? " | " + image.getException() : ""));
                 }
 
-                if (image.isError()) {
-                    System.err.println("❌ Image error: " + image.getException());
-                    throw new Exception("Failed to load image");
-                }
-
-                System.out.println("✅ Image loaded successfully! Size: " + image.getWidth() + "x" + image.getHeight());
-                return image;
+                throw new Exception("All candidate image URLs failed for " + exercise.getName());
             }
         };
 
@@ -3045,8 +3092,10 @@ public class MainController implements Initializable {
         });
 
         imageLoadTask.setOnFailed(e -> {
-            System.err.println("❌ Failed to load image: " + imageLoadTask.getException().getMessage());
-            imageLoadTask.getException().printStackTrace();
+            Throwable ex = imageLoadTask.getException();
+            System.err.println("❌ Failed to load image for " + exercise.getName() +
+                    (ex != null ? ": " + ex.getMessage() : ""));
+            if (ex != null) ex.printStackTrace();
             showImageError();
         });
 
