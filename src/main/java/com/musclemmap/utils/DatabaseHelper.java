@@ -461,7 +461,7 @@ public class DatabaseHelper {
 
                     // NECK (2)
                     {"Neck Curls", "Neck", "Bodyweight", "Beginner", "Lie on back, lift head toward chest", ""},
-                    {"Neck Extensions", "Neck", "Bodyweight", "Beginner", "Lie face down, lift head upward"}
+                    {"Neck Extensions", "Neck", "Bodyweight", "Beginner", "Lie face down, lift head upward",""}
             };
 
             int insertCount = 0;
@@ -471,7 +471,7 @@ public class DatabaseHelper {
                 pstmt.setString(3, (String) ex[2]);  // equipment
                 pstmt.setString(4, (String) ex[3]);  // difficulty
                 pstmt.setString(5, (String) ex[4]);  // instructions
-                pstmt.setString(6, (String) ex[5]);  // gif_url (empty for now)
+                pstmt.setString(6, ex.length > 5 ? (String) ex[5] : "");
                 pstmt.executeUpdate();
                 insertCount++;
             }
