@@ -2934,25 +2934,20 @@ public class MainController implements Initializable {
      * Converts muscle names to proper case for database queries
      * Examples: "FOREARMS" -> "Forearms", "LOWER BACK" -> "Lower Back"
      */
-    private String toProperCase(String str) {
-        if (str == null || str.isEmpty()) {
-            return str;
+    /**
+     * Converts string to proper case for database queries
+     * Examples: "BICEPS" -> "Biceps", "biceps" -> "Biceps", "Biceps" -> "Biceps"
+     */
+    private String toProperCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
         }
 
-        // ✅ CRITICAL: Single backslash for regex (not double!)
-        String[] words = str.toLowerCase().split("\\s+");
-        StringBuilder result = new StringBuilder();
+        // Trim whitespace
+        input = input.trim();
 
-        for (String word : words) {
-            if (result.length() > 0) {
-                result.append(" ");
-            }
-            // Capitalize first letter of each word
-            result.append(Character.toUpperCase(word.charAt(0)))
-                    .append(word.substring(1));
-        }
-
-        return result.toString();
+        // Convert first letter to uppercase, rest to lowercase
+        return input.substring(0, 1).toUpperCase() + input.substring(1).toLowerCase();
     }
 
 // ✅ ADD THIS NEW HELPER METHOD TO YOUR CLASS
@@ -2985,9 +2980,9 @@ public class MainController implements Initializable {
             return;
         }
 
-        System.out.println("🖼️ Attempting to load image for: " + exercise.getName());
+        System.out.println("✅ Loading GIF for: " + exercise.getName());
 
-        // Show loading indicator on UI thread
+        // Show loading indicator
         javafx.application.Platform.runLater(() -> {
             if (imagePlaceholder != null) imagePlaceholder.setVisible(false);
             if (exerciseImageView != null) exerciseImageView.setVisible(false);
@@ -2998,81 +2993,42 @@ public class MainController implements Initializable {
         Task<Image> imageLoadTask = new Task<Image>() {
             @Override
             protected Image call() throws Exception {
-                // Primary URL (DB gif_url if present, else mapping via getGifUrl normalization)
-                String primaryUrl = exercise.getGifUrl();
+                // Get GIF URL using the mapping method
+                String gifUrl = getExerciseImageUrl(exercise);
 
-                // Derive a secondary fallback by re-normalizing name → direct mapping
-                // This helps when DB has a stale/bad URL but the code map is correct.
-                String normalizedName = (exercise.getName() == null ? "" : exercise.getName())
-                        .toLowerCase()
-                        .replace('-', ' ')
-                        .replace('_', ' ')
-                        .replaceAll("\\s+", " ")
-                        .trim();
-                if (normalizedName.equals("lat pull down")) normalizedName = "lat pulldown";
-                if (normalizedName.equals("barbell rows")) normalizedName = "barbell row";
-                if (normalizedName.equals("cable flies")) normalizedName = "cable fly";
-                if (normalizedName.equals("dumbbell flies")) normalizedName = "chest fly";
-                if (normalizedName.equals("push ups")) normalizedName = "push-ups";
-
-                // Access the static map through the same resolver you use internally
-                // by calling getExerciseImageUrl again with normalized key.
-                String fallbackUrl = null;
-                try {
-                    // Use reflection-safe call path: reuse the public getter path
-                    // If primaryUrl came from DB and is bad, fallback hits the code map.
-                    // Avoid duplicate if identical.
-                    String mapped = (exercise.getGifUrl() == null || exercise.getGifUrl().isBlank())
-                            ? null
-                            : null; // no-op branch; we compute explicit mapped below
-                    // Explicit mapped URL from code map
-                    // We expose the same mapping by calling getExerciseImageUrl with normalized name
-                    // via a small helper to avoid private access; replicate normalization logic:
-                    fallbackUrl = com.musclemmap.models.Exercise.class
-                            .getDeclaredMethod("getExerciseImageUrl", String.class)
-                            .trySetAccessible() ? (String) com.musclemmap.models.Exercise.class
-                            .getDeclaredMethod("getExerciseImageUrl", String.class)
-                            .invoke(null, normalizedName) : null;
-                } catch (Throwable ignore) {
-                    // If reflection is restricted, we’ll just not use a fallback mapping
-                    fallbackUrl = null;
+                if (gifUrl == null || gifUrl.isBlank()) {
+                    throw new Exception("No GIF URL found for: " + exercise.getName());
                 }
 
-                // Decide candidate list, skipping duplicates/nulls
-                java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
-                if (primaryUrl != null && !primaryUrl.isBlank()) candidates.add(primaryUrl);
-                if (fallbackUrl != null && !fallbackUrl.isBlank()) candidates.add(fallbackUrl);
+                System.out.println("🔗 Loading from URL: " + gifUrl);
 
-                if (candidates.isEmpty()) {
-                    System.err.println("❌ No GIF URL found for: " + exercise.getName());
-                    throw new Exception("No image URL available");
-                }
+                // Load the image with background loading enabled
+                Image image = new Image(gifUrl, true);
 
-                // Try each candidate in order
-                for (String url : candidates) {
-                    System.out.println("📥 Loading image from URL: " + url);
-                    Image image = new Image(url, true);
+                // Wait for image to load (max 10 seconds)
+                int attempts = 0;
+                while (image.getProgress() < 1.0 && attempts < 100) {
+                    Thread.sleep(100);
+                    attempts++;
 
-                    // Wait for image to finish loading (increase attempts for slow networks/CDN)
-                    int attempts = 0;
-                    while (image.getProgress() < 1.0 && attempts < 80) { // 8 seconds max
-                        Thread.sleep(100);
-                        attempts++;
+                    // Check if image failed
+                    if (image.isError()) {
+                        throw new Exception("Image load error: " +
+                                (image.getException() != null ? image.getException().getMessage() : "Unknown"));
                     }
-
-                    if (!image.isError() && image.getWidth() > 0 && image.getHeight() > 0) {
-                        System.out.println("✅ Image loaded successfully! Size: " + image.getWidth() + "x" + image.getHeight());
-                        return image;
-                    }
-
-                    System.err.println("⚠️ Image load failed for " + exercise.getName() + " at URL: " + url +
-                            (image.getException() != null ? " | " + image.getException() : ""));
                 }
 
-                throw new Exception("All candidate image URLs failed for " + exercise.getName());
+                // Verify image loaded successfully
+                if (!image.isError() && image.getWidth() > 0 && image.getHeight() > 0) {
+                    System.out.println("✅ Image loaded! Size: " + image.getWidth() + "x" + image.getHeight());
+                    return image;
+                } else {
+                    throw new Exception("Image failed to load properly");
+                }
             }
         };
 
+        // On success - display the image
         imageLoadTask.setOnSucceeded(e -> {
             Image image = imageLoadTask.getValue();
             if (image != null && !image.isError()) {
@@ -3080,26 +3036,30 @@ public class MainController implements Initializable {
                     if (exerciseImageView != null) {
                         exerciseImageView.setImage(image);
                         exerciseImageView.setVisible(true);
+                        exerciseImageView.setFitWidth(400);  // Set size
+                        exerciseImageView.setFitHeight(300);
+                        exerciseImageView.setPreserveRatio(true);
                     }
                     if (imageLoadingIndicator != null) {
                         imageLoadingIndicator.setVisible(false);
                     }
-                    System.out.println("✅ Image displayed successfully for: " + exercise.getName());
+                    System.out.println("✅ GIF displayed for: " + exercise.getName());
                 });
             } else {
                 showImageError();
             }
         });
 
+        // On failure - show error
         imageLoadTask.setOnFailed(e -> {
             Throwable ex = imageLoadTask.getException();
-            System.err.println("❌ Failed to load image for " + exercise.getName() +
-                    (ex != null ? ": " + ex.getMessage() : ""));
+            System.err.println("❌ Failed to load GIF for " + exercise.getName() + ": " +
+                    (ex != null ? ex.getMessage() : "Unknown error"));
             if (ex != null) ex.printStackTrace();
             showImageError();
         });
 
-        // Start loading in background thread
+        // Start the background thread
         Thread imageThread = new Thread(imageLoadTask);
         imageThread.setDaemon(true);
         imageThread.start();

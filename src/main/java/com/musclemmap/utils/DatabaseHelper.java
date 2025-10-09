@@ -236,15 +236,17 @@ public class DatabaseHelper {
 
             // ✅ EXERCISES TABLE - ADDED gif_url COLUMN
             String createExercisesTable = """
-        CREATE TABLE IF NOT EXISTS exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            muscle_group TEXT NOT NULL,
-            equipment TEXT NOT NULL,
-            difficulty TEXT NOT NULL,
-            instructions TEXT,
-            gif_url TEXT
-        )""";
+    CREATE TABLE IF NOT EXISTS exercises (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        musclegroup TEXT NOT NULL,
+        equipment TEXT NOT NULL,
+        difficulty TEXT NOT NULL,
+        instructions TEXT,
+        gif_url TEXT
+    )
+""";
+
             stmt.execute(createExercisesTable);
 
             // WORKOUTS TABLE
@@ -471,7 +473,7 @@ public class DatabaseHelper {
                 pstmt.setString(3, (String) ex[2]);  // equipment
                 pstmt.setString(4, (String) ex[3]);  // difficulty
                 pstmt.setString(5, (String) ex[4]);  // instructions
-                pstmt.setString(6, ex.length > 5 ? (String) ex[5] : "");
+                pstmt.setString(6, ex.length >= 6 ? (String) ex[5] : "");
                 pstmt.executeUpdate();
                 insertCount++;
             }
@@ -774,7 +776,7 @@ public class DatabaseHelper {
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
                         rs.getString("instructions"),
-                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
+                        rs.getString("gifurl")  // Add this
                 );
                 exercises.add(exercise);
             }
@@ -804,7 +806,7 @@ public class DatabaseHelper {
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
                         rs.getString("instructions"),
-                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
+                        rs.getString("gifurl")  // ✅ NOW INCLUDES GIF URL
                 );
             }
 
@@ -818,23 +820,32 @@ public class DatabaseHelper {
 
     public List<Exercise> getExercisesByMuscleGroup(String muscleGroup) {
         List<Exercise> exercises = new ArrayList<>();
+
+        if (muscleGroup == null || muscleGroup.isBlank()) {
+            System.err.println("⚠️ Null or empty muscle group requested");
+            return exercises;
+        }
+
         try {
-            String sql = "SELECT * FROM exercises WHERE muscle_group = ? ORDER BY name";
+            // ✅ CASE-INSENSITIVE query
+            String sql = "SELECT * FROM exercises WHERE LOWER(musclegroup) = LOWER(?) ORDER BY name";
             PreparedStatement pstmt = connection.prepareStatement(sql);
-            pstmt.setString(1, muscleGroup);
+            pstmt.setString(1, muscleGroup.trim());
+
+            System.out.println("🔍 Querying database for muscle group: '" + muscleGroup + "'");
 
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                // ✅ FIXED: Use 7-parameter constructor that includes gif_url
+                // ✅ Use 7-parameter constructor with gifurl
                 Exercise exercise = new Exercise(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getString("muscle_group"),
+                        rs.getString("musclegroup"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
                         rs.getString("instructions"),
-                        rs.getString("gif_url")  // ✅ NOW INCLUDES GIF URL
+                        rs.getString("gifurl")  // ✅ Correct column name
                 );
                 exercises.add(exercise);
             }
@@ -842,12 +853,41 @@ public class DatabaseHelper {
             rs.close();
             pstmt.close();
 
-            System.out.println("✅ Loaded " + exercises.size() + " exercises for " + muscleGroup);
+            System.out.println("✅ Found " + exercises.size() + " exercises for: " + muscleGroup);
+
+            // ✅ DEBUG: If no exercises found, show what's actually in the database
+            if (exercises.isEmpty()) {
+                System.err.println("❌ NO EXERCISES FOUND FOR: " + muscleGroup);
+                showAvailableMuscleGroups();
+            }
+
         } catch (SQLException e) {
-            System.err.println("❌ Failed to load exercises by muscle group: " + e.getMessage());
+            System.err.println("❌ SQL Error: " + e.getMessage());
             e.printStackTrace();
         }
+
         return exercises;
+    }
+
+    // ✅ ADD THIS DEBUG METHOD
+    private void showAvailableMuscleGroups() {
+        try {
+            String sql = "SELECT DISTINCT musclegroup, COUNT(*) as count FROM exercises GROUP BY musclegroup ORDER BY musclegroup";
+            Statement stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+
+            System.out.println("\n📊 MUSCLE GROUPS IN DATABASE:");
+            System.out.println("=" + "=".repeat(50));
+            while (rs.next()) {
+                System.out.println("  ✓ " + rs.getString("musclegroup") + " → " + rs.getInt("count") + " exercises");
+            }
+            System.out.println("=" + "=".repeat(50) + "\n");
+
+            rs.close();
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Failed to query muscle groups: " + e.getMessage());
+        }
     }
 
     public Map<String, List<WorkoutSet>> getExerciseHistory(String exerciseName) {
