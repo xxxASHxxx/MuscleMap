@@ -257,12 +257,18 @@ public class Exercise {
                 .replaceAll("\\s+", " ")
                 .trim();
 
-        // simple synonym normalization
+        // General variants
         if (key.equals("lat pull down")) key = "lat pulldown";
         if (key.equals("barbell rows")) key = "barbell row";
         if (key.equals("cable flies")) key = "cable fly";
         if (key.equals("dumbbell flies")) key = "chest fly";
         if (key.equals("push ups")) key = "push-ups";
+
+        // Triceps variants - THESE WERE MISSING!
+        if (key.equals("overhead triceps extension")) key = "overhead tricep extension";
+        if (key.equals("triceps pushdown")) key = "tricep pushdown";
+        if (key.equals("skull crusher")) key = "skull crushers";
+        if (key.equals("diamond push ups")) key = "diamond push-ups";
 
         return getExerciseImageUrl(key);
     }

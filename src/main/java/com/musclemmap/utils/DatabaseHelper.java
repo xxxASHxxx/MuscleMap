@@ -19,6 +19,7 @@ public class DatabaseHelper {
             connection = DriverManager.getConnection(DB_URL);
             connection.setAutoCommit(true);
             initializeDatabase();
+            backfillGifUrlsIfMissing();
             System.out.println("🗄️ Database connected successfully!");
         } catch (SQLException e) {
             System.err.println("❌ Database connection failed: " + e.getMessage());
@@ -915,6 +916,54 @@ public class DatabaseHelper {
             System.err.println("❌ Failed to load workout stats: " + e.getMessage());
         }
         return stats;
+    }
+    private void backfillGifUrlsIfMissing() {
+        final String select = "SELECT id, name, gif_url FROM exercises";
+        final String update = "UPDATE exercises SET gif_url = ? WHERE id = ?";
+        try (Statement s = connection.createStatement();
+             ResultSet rs = s.executeQuery(select);
+             PreparedStatement up = connection.prepareStatement(update)) {
+            int patched = 0;
+            while (rs.next()) {
+                String current = rs.getString("gif_url");
+                if (current != null && !current.isBlank()) continue;
+
+                String name = rs.getString("name");
+                String key = name == null ? "" : name.toLowerCase()
+                        .replace('-', ' ')
+                        .replace('_', ' ')
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                if (key.equals("lat pull down")) key = "lat pulldown";
+                if (key.equals("barbell rows")) key = "barbell row";
+                if (key.equals("cable flies")) key = "cable fly";
+                if (key.equals("dumbbell flies")) key = "chest fly";
+                if (key.equals("push ups")) key = "push-ups";
+                if (key.equals("overhead triceps extension")) key = "overhead tricep extension";
+                if (key.equals("triceps pushdown")) key = "tricep pushdown";
+                if (key.equals("skull crusher")) key = "skull crushers";
+                if (key.equals("diamond push ups")) key = "diamond push-ups";
+
+                String mapped = null;
+                try {
+                    var m = com.musclemmap.models.Exercise.class
+                            .getDeclaredMethod("getExerciseImageUrl", String.class);
+                    m.setAccessible(true);
+                    mapped = (String) m.invoke(null, key);
+                } catch (Exception ignore) {}
+
+                if (mapped != null && !mapped.isBlank()) {
+                    up.setString(1, mapped);
+                    up.setInt(2, rs.getInt("id"));
+                    up.addBatch();
+                    patched++;
+                }
+            }
+            up.executeBatch();
+            if (patched > 0) System.out.println("🔁 Backfilled gif_url for " + patched + " exercises.");
+        } catch (Exception e) {
+            System.err.println("gif_url backfill failed: " + e.getMessage());
+        }
     }
 
     // ==================== UPDATE/DELETE OPERATIONS ====================

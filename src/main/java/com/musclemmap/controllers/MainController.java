@@ -3109,8 +3109,8 @@ public class MainController implements Initializable {
     private void showImagePlaceholder() {
         javafx.application.Platform.runLater(() -> {
             if (exerciseImageView != null) {
-                exerciseImageView.setVisible(false);
                 exerciseImageView.setImage(null);
+                exerciseImageView.setVisible(false);
             }
             if (imageLoadingIndicator != null) {
                 imageLoadingIndicator.setVisible(false);
@@ -3118,7 +3118,6 @@ public class MainController implements Initializable {
             if (imagePlaceholder != null) {
                 imagePlaceholder.setVisible(true);
             }
-            System.out.println("📭 Showing image placeholder");
         });
     }
 
@@ -3126,6 +3125,7 @@ public class MainController implements Initializable {
     private void showImageError() {
         javafx.application.Platform.runLater(() -> {
             if (exerciseImageView != null) {
+                exerciseImageView.setImage(null);
                 exerciseImageView.setVisible(false);
             }
             if (imageLoadingIndicator != null) {
@@ -3134,7 +3134,7 @@ public class MainController implements Initializable {
             if (imagePlaceholder != null) {
                 imagePlaceholder.setVisible(true);
             }
-            System.err.println("⚠️ Showing placeholder due to image error");
+            System.err.println("⚠️ Showing placeholder due to image load failure");
         });
     }
     private void handleExerciseSelection(Exercise exercise) {
