@@ -240,6 +240,7 @@ public class MainController implements Initializable {
         }
 
         try {
+
             // Get selected exercise
             Exercise selectedExercise = exerciseComboBox.getValue();
             if (selectedExercise == null) {
@@ -2993,8 +2994,8 @@ public class MainController implements Initializable {
         Task<Image> imageLoadTask = new Task<Image>() {
             @Override
             protected Image call() throws Exception {
-                // Get GIF URL using the mapping method
-                String gifUrl = getExerciseImageUrl(exercise);
+                // Get GIF URL using the Exercise class's improved method
+                String gifUrl = exercise.getGifUrl();
 
                 if (gifUrl == null || gifUrl.isBlank()) {
                     throw new Exception("No GIF URL found for: " + exercise.getName());
@@ -3113,146 +3114,26 @@ public class MainController implements Initializable {
     }
 
 
-    private String getExerciseImageUrl(Exercise exercise) {
-        String exerciseName = exercise.getName().toLowerCase().trim();
+    // ✅ REMOVED: Now using Exercise.getGifUrl() method instead of duplicate mapping
 
-        // Comprehensive exercise image database - ALL 69 EXERCISES
-        Map<String, String> exerciseImages = new HashMap<>();
-
-        // ==================== CHEST EXERCISES (9) ====================
-        exerciseImages.put("bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif");
-        exerciseImages.put("incline bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Incline-Bench-Press.gif");
-        exerciseImages.put("decline bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Barbell-Bench-Press.gif");
-        exerciseImages.put("dumbbell press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Bench-Press.gif");
-        exerciseImages.put("incline dumbbell press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif");
-        exerciseImages.put("chest fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Fly.gif");
-        exerciseImages.put("cable fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Cross-over-Variation.gif");
-        exerciseImages.put("push-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-up.gif");
-        exerciseImages.put("chest dips", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dips.gif");
-
-        // ==================== BACK EXERCISES (7) ====================
-        exerciseImages.put("deadlifts", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Deadlift.gif");
-        exerciseImages.put("barbell row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Row.gif");
-        exerciseImages.put("pull-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif");
-        exerciseImages.put("lat pulldown", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif");
-        exerciseImages.put("seated cable row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif");
-        exerciseImages.put("t-bar row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/T-Bar-Row.gif");
-        exerciseImages.put("one-arm dumbbell row", "https://fitnessprogramer.com/wp-content/uploads/2021/02/One-Arm-Dumbbell-Row.gif");
-
-        // ==================== SHOULDER EXERCISES (7) ====================
-        exerciseImages.put("overhead press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/barbell-standing-military-press.gif");
-        exerciseImages.put("dumbbell shoulder press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif");
-        exerciseImages.put("lateral raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif");
-        exerciseImages.put("front raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Front-Raise.gif");
-        exerciseImages.put("rear delt fly", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Rear-Delt-Fly.gif");
-        exerciseImages.put("face pull", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Face-Pull.gif");
-        exerciseImages.put("arnold press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Arnold-Press.gif");
-
-        // ==================== BICEPS EXERCISES (6) ====================
-        exerciseImages.put("bicep curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif");
-        exerciseImages.put("barbell curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif");
-        exerciseImages.put("hammer curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hammer-Curl.gif");
-        exerciseImages.put("preacher curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Preacher-Curl.gif");
-        exerciseImages.put("cable curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Curl.gif");
-        exerciseImages.put("concentration curl", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Concentration-Curl.gif");
-
-        // ==================== TRICEPS EXERCISES (6) ====================
-        exerciseImages.put("tricep dips", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bench-Dips.gif");
-        exerciseImages.put("close-grip bench press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Close-grip-Bench-Press.gif");
-        exerciseImages.put("tricep pushdown", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Pushdown.gif");
-        exerciseImages.put("overhead tricep extension", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Overhead-Triceps-Extension.gif");
-        exerciseImages.put("skull crushers", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Lying-Triceps-Extension.gif");
-        exerciseImages.put("diamond push-ups", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif");
-
-        // ==================== FOREARMS EXERCISES (3) ====================
-        exerciseImages.put("wrist curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wrist-Curl.gif");
-        exerciseImages.put("reverse wrist curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Reverse-Wrist-Curl.gif");
-        exerciseImages.put("farmer's walk", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Farmers-Walk.gif");
-
-        // ==================== ABS EXERCISES (6) ====================
-        exerciseImages.put("planks", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif");
-        exerciseImages.put("crunches", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Crunch.gif");
-        exerciseImages.put("leg raises", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Raise.gif");
-        exerciseImages.put("russian twists", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif");
-        exerciseImages.put("cable crunch", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Crunch.gif");
-        exerciseImages.put("hanging knee raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hanging-Leg-Raise.gif");
-
-        // ==================== OBLIQUES EXERCISES (3) ====================
-        exerciseImages.put("side plank", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Side-Plank.gif");
-        exerciseImages.put("bicycle crunches", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif");
-        exerciseImages.put("wood chops", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Wood-Chop.gif");
-
-        // ==================== LOWER BACK EXERCISES (3) ====================
-        exerciseImages.put("back extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hyperextension.gif");
-        exerciseImages.put("good mornings", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Good-Morning.gif");
-        exerciseImages.put("superman", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Superman-Exercise.gif");
-
-        // ==================== GLUTES EXERCISES (4) ====================
-        exerciseImages.put("hip thrusts", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif");
-        exerciseImages.put("glute bridges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/glute-bridge.gif");
-        exerciseImages.put("bulgarian split squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bulgarian-Split-Squat.gif");
-        exerciseImages.put("cable kickbacks", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Kickback.gif");
-
-        // ==================== QUADRICEPS EXERCISES (6) ====================
-        exerciseImages.put("squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Squat.gif");
-        exerciseImages.put("front squats", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Front-Squat.gif");
-        exerciseImages.put("leg press", "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-PRESS.gif");
-        exerciseImages.put("lunges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunge.gif");
-        exerciseImages.put("leg extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-extension.gif");
-        exerciseImages.put("walking lunges", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Walking-Lunge.gif");
-
-        // ==================== HAMSTRINGS EXERCISES (4) ====================
-        exerciseImages.put("romanian deadlift", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Romanian-Deadlift.gif");
-        exerciseImages.put("leg curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Curl.gif");
-        exerciseImages.put("nordic curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Nordic-Hamstring-Curl.gif");
-        exerciseImages.put("stiff-leg deadlift", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Stiff-Leg-Barbell-Deadlift.gif");
-
-        // ==================== CALVES EXERCISES (3) ====================
-        exerciseImages.put("standing calf raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Calf-Raise.gif");
-        exerciseImages.put("seated calf raise", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Calf-Raise.gif");
-        exerciseImages.put("jump rope", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Rope.gif");
-
-        // ==================== NECK EXERCISES (2) ====================
-        exerciseImages.put("neck curls", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Curl.gif");
-        exerciseImages.put("neck extensions", "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Extension.gif");
-
-        // Try exact match first
-        if (exerciseImages.containsKey(exerciseName)) {
-            System.out.println("✅ Found exact match for: " + exerciseName);
-            return exerciseImages.get(exerciseName);
-        }
-
-        // Try partial match (handles variations like "Dumbbell Curls" vs "Bicep Curls")
-        for (Map.Entry<String, String> entry : exerciseImages.entrySet()) {
-            if (exerciseName.contains(entry.getKey()) || entry.getKey().contains(exerciseName)) {
-                System.out.println("✅ Found partial match: " + exerciseName + " -> " + entry.getKey());
-                return entry.getValue();
-            }
-        }
-
-        // Fallback: Use muscle group placeholder
-        System.out.println("⚠️ No image found for: " + exerciseName + " - using fallback");
-        return getPlaceholderImageByMuscleGroup(exercise.getMuscleGroup());
-    }
-
-    // Fallback placeholder images by muscle group
+    // ✅ UPDATED: Fallback placeholder images using reliable GIPHY URLs
     private String getPlaceholderImageByMuscleGroup(String muscleGroup) {
         return switch (muscleGroup.toLowerCase()) {
-            case "chest" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif";
-            case "back" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Row.gif";
-            case "shoulders" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif";
-            case "biceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif";
-            case "triceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Pushdown.gif";
-            case "forearms" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wrist-Curl.gif";
-            case "abs" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Crunch.gif";
-            case "obliques" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif";
-            case "lower back" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hyperextension.gif";
-            case "glutes" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif";
-            case "quadriceps" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Squat.gif";
-            case "hamstrings" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Curl.gif";
-            case "calves" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Calf-Raise.gif";
-            case "neck" -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Neck-Curl.gif";
-            default -> "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif";
+            case "chest" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "back" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "shoulders" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "biceps" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "triceps" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "forearms" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "abs" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "obliques" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "lower back" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "glutes" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "quadriceps" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "hamstrings" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "calves" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            case "neck" -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
+            default -> "https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif";
         };
     }
 
@@ -3322,6 +3203,7 @@ public class MainController implements Initializable {
             this.color = color;
         }
     }
+
 
 }
 

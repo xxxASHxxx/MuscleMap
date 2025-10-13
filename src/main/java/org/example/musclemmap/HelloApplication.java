@@ -15,11 +15,11 @@ public class HelloApplication extends Application {
 
         // 🎯 CRITICAL: Load your CSS file here
         try {
-            String cssFile = HelloApplication.class.getResource("/css/application.css").toExternalForm();
+            String cssFile = HelloApplication.class.getResource("/css/styles.css").toExternalForm();
             scene.getStylesheets().add(cssFile);
             System.out.println("✅ CSS loaded successfully from: " + cssFile);
         } catch (Exception e) {
-            System.err.println("❌ CSS file not found! Make sure application.css is in src/main/resources/css/");
+            System.err.println("❌ CSS file not found! Make sure styles.css is in src/main/resources/css/");
             e.printStackTrace();
         }
 

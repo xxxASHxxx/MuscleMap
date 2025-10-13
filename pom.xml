@@ -43,6 +43,27 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- JavaFX Graphics (required for rendering) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- JavaFX Media (optional but recommended) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- JavaFX Web (optional but recommended) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
         <!-- SQLite Database -->
         <dependency>
             <groupId>org.xerial</groupId>
@@ -83,9 +104,21 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>org.example.musclemmap.HelloApplication</mainClass>
+                            <commandlineArgs>--add-modules javafx.controls,javafx.fxml</commandlineArgs>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Maven Exec Plugin for easy running -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>org.example.musclemmap.HelloApplication</mainClass>
+                    <commandlineArgs>--add-modules javafx.controls,javafx.fxml</commandlineArgs>
+                </configuration>
             </plugin>
 
             <!-- Surefire Plugin for running tests -->

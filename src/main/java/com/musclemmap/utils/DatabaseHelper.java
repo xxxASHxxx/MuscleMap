@@ -1,7 +1,6 @@
 package com.musclemmap.utils;
 
 import com.musclemmap.models.*;
-import com.musclemmap.utils.PasswordUtil;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -44,34 +43,38 @@ public class DatabaseHelper {
             String sql = "SELECT * FROM users WHERE username = ?";
             PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setString(1, username);
-
             ResultSet rs = pstmt.executeQuery();
+
             if (rs.next()) {
+                // ✅ FIXED: Uses underscores
                 String storedPasswordHash = rs.getString("password_hash");
 
                 if (PasswordUtil.verifyPassword(password, storedPasswordHash)) {
-                    User user = new User(
-                            rs.getInt("id"),
-                            rs.getString("username"),
-                            rs.getString("email"),
-                            storedPasswordHash,
-                            rs.getTimestamp("created_at").toLocalDateTime(),
-                            null,
-                            rs.getInt("workout_streak"),
-                            rs.getDouble("total_volume_lifted")
-                    );
+                    User user = new User();
+                    user.setId(rs.getInt("id"));
+                    user.setUsername(rs.getString("username"));
+                    user.setEmail(rs.getString("email"));
+                    user.setWorkoutStreak(rs.getInt("workout_streak"));
+                    user.setTotalVolumeLifted(rs.getDouble("total_volume_lifted"));
 
                     updateLastLogin(user.getId());
-                    System.out.println("✅ Authentication successful for: " + username);
+
+                    System.out.println("✅ User authenticated: " + username);
+                    rs.close();
+                    pstmt.close();
                     return user;
                 } else {
-                    System.out.println("❌ Invalid password for: " + username);
+                    System.out.println("❌ Invalid password for user: " + username);
                 }
             } else {
                 System.out.println("❌ User not found: " + username);
             }
+
+            rs.close();
+            pstmt.close();
         } catch (SQLException e) {
             System.err.println("❌ Authentication error: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -79,38 +82,35 @@ public class DatabaseHelper {
     public boolean registerUser(String username, String email, String password) {
         try {
             if (isUsernameTaken(username)) {
-                System.out.println("⚠️ Username already taken: " + username);
+                System.out.println("Username already taken: " + username);
                 return false;
             }
 
             if (isEmailTaken(email)) {
-                System.out.println("⚠️ Email already registered: " + email);
+                System.out.println("Email already registered: " + email);
                 return false;
             }
 
             String passwordHash = PasswordUtil.hashPassword(password);
 
+            // ✅ FIXED: Uses underscores to match CREATE TABLE
             String sql = "INSERT INTO users (username, email, password_hash, workout_streak, total_volume_lifted) VALUES (?, ?, ?, 0, 0.0)";
-            PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 
+            PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setString(1, username);
             pstmt.setString(2, email);
             pstmt.setString(3, passwordHash);
+            pstmt.executeUpdate();
+            pstmt.close();
 
-            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("✅ User registered successfully: " + username);
+            return true;
 
-            if (rowsAffected > 0) {
-                ResultSet generatedKeys = pstmt.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    int userId = generatedKeys.getInt(1);
-                    System.out.println("✅ User registered successfully with ID: " + userId);
-                    return true;
-                }
-            }
         } catch (SQLException e) {
             System.err.println("❌ Registration error: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public boolean isUsernameTaken(String username) {
@@ -147,12 +147,42 @@ public class DatabaseHelper {
 
     private void updateLastLogin(int userId) {
         try {
+            // ✅ FIXED: Uses last_login with underscore
             String sql = "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?";
             PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setInt(1, userId);
             pstmt.executeUpdate();
+            pstmt.close();
         } catch (SQLException e) {
-            System.err.println("❌ Error updating last login: " + e.getMessage());
+            System.err.println("Error updating last login: " + e.getMessage());
+        }
+    }
+    public void updateUserStreak(int userId, int newStreak) {
+        try {
+            // ✅ Uses workout_streak with underscore
+            String sql = "UPDATE users SET workout_streak = ? WHERE id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, newStreak);
+            pstmt.setInt(2, userId);
+            pstmt.executeUpdate();
+            pstmt.close();
+            System.out.println("✅ Updated workout streak for user " + userId + " to " + newStreak);
+        } catch (SQLException e) {
+            System.err.println("Error updating user streak: " + e.getMessage());
+        }
+    }
+    public void updateTotalVolume(int userId, double additionalVolume) {
+        try {
+            // ✅ Uses total_volume_lifted with underscores
+            String sql = "UPDATE users SET total_volume_lifted = total_volume_lifted + ? WHERE id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setDouble(1, additionalVolume);
+            pstmt.setInt(2, userId);
+            pstmt.executeUpdate();
+            pstmt.close();
+            System.out.println("✅ Updated total volume for user " + userId);
+        } catch (SQLException e) {
+            System.err.println("Error updating total volume: " + e.getMessage());
         }
     }
 
@@ -194,22 +224,25 @@ public class DatabaseHelper {
             String sql = "SELECT * FROM users WHERE id = ?";
             PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setInt(1, userId);
-
             ResultSet rs = pstmt.executeQuery();
+
             if (rs.next()) {
-                return new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("email"),
-                        rs.getString("password_hash"),
-                        rs.getTimestamp("created_at").toLocalDateTime(),
-                        rs.getTimestamp("last_login") != null ? rs.getTimestamp("last_login").toLocalDateTime() : null,
-                        rs.getInt("workout_streak"),
-                        rs.getDouble("total_volume_lifted")
-                );
+                User user = new User();
+                user.setId(rs.getInt("id"));
+                user.setUsername(rs.getString("username"));
+                user.setEmail(rs.getString("email"));
+                user.setWorkoutStreak(rs.getInt("workout_streak"));  // ✅ underscore
+                user.setTotalVolumeLifted(rs.getDouble("total_volume_lifted"));  // ✅ underscores
+
+                rs.close();
+                pstmt.close();
+                return user;
             }
+
+            rs.close();
+            pstmt.close();
         } catch (SQLException e) {
-            System.err.println("❌ Error retrieving user: " + e.getMessage());
+            System.err.println("Error getting user: " + e.getMessage());
         }
         return null;
     }
@@ -225,11 +258,11 @@ public class DatabaseHelper {
                     + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + "username TEXT UNIQUE NOT NULL, "
                     + "email TEXT UNIQUE NOT NULL, "
-                    + "passwordhash TEXT NOT NULL, "
+                    + "password_hash TEXT NOT NULL, "
                     + "createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-                    + "lastlogin TIMESTAMP, "
-                    + "workoutstreak INTEGER DEFAULT 0, "
-                    + "totalvolumelifted REAL DEFAULT 0.0"
+                    + "last_login TIMESTAMP, "
+                    + "workout_streak INTEGER DEFAULT 0, "
+                    + "total_volume_lifted REAL DEFAULT 0.0"
                     + ")";
             stmt.execute(createUsersTable);
 
@@ -260,16 +293,19 @@ public class DatabaseHelper {
             stmt.execute(createWorkoutsTable);
 
             // SETS TABLE
+            // Option 1: Add to CREATE TABLE
             String createSetsTable = "CREATE TABLE IF NOT EXISTS workoutsets ("
                     + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + "workoutid INTEGER NOT NULL, "
                     + "exercisename TEXT NOT NULL, "
+                    + "musclegroup TEXT, "  // ✅ ADD THIS
                     + "reps INTEGER NOT NULL, "
                     + "weight REAL NOT NULL, "
                     + "settype TEXT DEFAULT 'NORMAL', "
                     + "completed BOOLEAN DEFAULT 0, "
                     + "FOREIGN KEY (workoutid) REFERENCES workouts(id) ON DELETE CASCADE"
                     + ")";
+
             stmt.execute(createSetsTable);
 
             // PERSONAL RECORDS TABLE
@@ -484,8 +520,8 @@ public class DatabaseHelper {
 
     public int saveWorkout(Workout workout, int userId) {
         try {
-            // Insert workout
-            String workoutSql = "INSERT INTO workouts (user_id, name, start_time, end_time, total_volume) VALUES (?, ?, ?, ?, ?)";
+            // ✅ FIXED: Column names match CREATE TABLE exactly
+            String workoutSql = "INSERT INTO workouts (userid, name, starttime, endtime, totalvolume) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement workoutStmt = connection.prepareStatement(workoutSql, Statement.RETURN_GENERATED_KEYS);
 
             workoutStmt.setInt(1, userId);
@@ -514,23 +550,7 @@ public class DatabaseHelper {
 
             // Save all sets
             if (workout.getSets() != null && !workout.getSets().isEmpty()) {
-                String setSql = "INSERT INTO workout_sets (workout_id, exercise_name, muscle_group, reps, weight, set_number) VALUES (?, ?, ?, ?, ?, ?)";
-                PreparedStatement setStmt = connection.prepareStatement(setSql);
-
-                for (int i = 0; i < workout.getSets().size(); i++) {
-                    WorkoutSet set = workout.getSets().get(i);
-                    setStmt.setInt(1, workoutId);
-                    setStmt.setString(2, set.getExercise().getName());
-                    setStmt.setString(3, set.getExercise().getMuscleGroup());
-                    setStmt.setInt(4, set.getReps());
-                    setStmt.setDouble(5, set.getWeight());
-                    setStmt.setInt(6, i + 1);
-                    setStmt.addBatch();
-                }
-
-                int[] setResults = setStmt.executeBatch();
-                System.out.println("✅ Saved " + setResults.length + " sets");  // ✅ FIXED - removed ()
-                setStmt.close();
+                saveSets(workoutId, workout.getSets());
             }
 
             return workoutId;
@@ -545,7 +565,8 @@ public class DatabaseHelper {
 
     private void saveSets(int workoutId, List<WorkoutSet> sets) {
         try {
-            String sql = "INSERT INTO workout_sets (workout_id, exercise_name, muscle_group, reps, weight, set_type, completed) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            // ✅ FIXED: Matches workoutsets table columns exactly
+            String sql = "INSERT INTO workoutsets (workoutid, exercisename, musclegroup, reps, weight, settype, completed) VALUES (?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(sql);
 
             for (WorkoutSet set : sets) {
@@ -554,12 +575,14 @@ public class DatabaseHelper {
                 pstmt.setString(3, set.getExercise().getMuscleGroup());
                 pstmt.setInt(4, set.getReps());
                 pstmt.setDouble(5, set.getWeight());
-                pstmt.setString(6, set.getType().toString());
+                pstmt.setString(6, set.getType() != null ? set.getType().toString() : "NORMAL");
                 pstmt.setBoolean(7, set.isCompleted());
                 pstmt.executeUpdate();
             }
+
             pstmt.close();
             System.out.println("✅ Saved " + sets.size() + " sets for workout " + workoutId);
+
         } catch (SQLException e) {
             System.err.println("❌ Failed to save sets: " + e.getMessage());
             e.printStackTrace();
@@ -574,7 +597,8 @@ public class DatabaseHelper {
     public List<Workout> getWorkoutsByUserId(int userId) {
         List<Workout> workouts = new ArrayList<>();
         try {
-            String sql = "SELECT * FROM workouts WHERE user_id = ? ORDER BY start_time DESC";
+            // ✅ FIXED: Use correct column name 'userid' instead of 'user_id'
+            String sql = "SELECT * FROM workouts WHERE userid = ? ORDER BY starttime DESC";
             PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setInt(1, userId);
             ResultSet rs = pstmt.executeQuery();
@@ -598,12 +622,13 @@ public class DatabaseHelper {
     public Map<String, Double> getPersonalRecords(int userId) {
         Map<String, Double> prs = new HashMap<>();
         try {
+            // ✅ FIXED: Use correct table name 'workoutsets' and column names
             String sql = """
-            SELECT ws.exercise_name, MAX(ws.weight) as max_weight
-            FROM workout_sets ws
-            JOIN workouts w ON ws.workout_id = w.id
-            WHERE w.user_id = ?
-            GROUP BY ws.exercise_name
+            SELECT ws.exercisename, MAX(ws.weight) as max_weight
+            FROM workoutsets ws
+            JOIN workouts w ON ws.workoutid = w.id
+            WHERE w.userid = ?
+            GROUP BY ws.exercisename
             ORDER BY max_weight DESC
             """;
 
@@ -612,7 +637,7 @@ public class DatabaseHelper {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                prs.put(rs.getString("exercise_name"), rs.getDouble("max_weight"));
+                prs.put(rs.getString("exercisename"), rs.getDouble("max_weight"));
             }
 
             rs.close();
@@ -626,10 +651,11 @@ public class DatabaseHelper {
     private Workout buildWorkoutFromResultSet(ResultSet rs) throws SQLException {
         int id = rs.getInt("id");
         String name = rs.getString("name");
-        LocalDateTime startTime = rs.getTimestamp("start_time").toLocalDateTime();
-        Timestamp endTimestamp = rs.getTimestamp("end_time");
+        // ✅ FIXED: Use correct column names from database schema
+        LocalDateTime startTime = rs.getTimestamp("starttime").toLocalDateTime();
+        Timestamp endTimestamp = rs.getTimestamp("endtime");
         LocalDateTime endTime = endTimestamp != null ? endTimestamp.toLocalDateTime() : null;
-        double totalVolume = rs.getDouble("total_volume");
+        double totalVolume = rs.getDouble("totalvolume");
         String notes = rs.getString("notes");
 
         Workout workout = new Workout(name);
@@ -648,17 +674,19 @@ public class DatabaseHelper {
 
     private List<WorkoutSet> getSetsForWorkout(int workoutId) {
         List<WorkoutSet> sets = new ArrayList<>();
+
         try {
-            String sql = "SELECT * FROM workout_sets WHERE workout_id = ?";
+            // ✅ FIXED: Column names match workoutsets table
+            String sql = "SELECT * FROM workoutsets WHERE workoutid = ?";
             PreparedStatement pstmt = connection.prepareStatement(sql);
             pstmt.setInt(1, workoutId);
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                String exerciseName = rs.getString("exercise_name");
-                String muscleGroup = rs.getString("muscle_group");
-                Exercise exercise = getExerciseByName(exerciseName);
+                String exerciseName = rs.getString("exercisename");
+                String muscleGroup = rs.getString("musclegroup");
 
+                Exercise exercise = getExerciseByName(exerciseName);
                 if (exercise == null) {
                     exercise = new Exercise(exerciseName, muscleGroup != null ? muscleGroup : "Unknown", "Unknown", "Intermediate", "");
                 }
@@ -677,6 +705,7 @@ public class DatabaseHelper {
             rs.close();
             pstmt.close();
             System.out.println("✅ Loaded " + sets.size() + " sets for workout " + workoutId);
+
         } catch (SQLException e) {
             System.err.println("❌ Failed to load sets: " + e.getMessage());
             e.printStackTrace();
@@ -688,7 +717,8 @@ public class DatabaseHelper {
     public List<Workout> getAllWorkouts() {
         List<Workout> workouts = new ArrayList<>();
         try {
-            String sql = "SELECT * FROM workouts ORDER BY start_time DESC";
+            // ✅ FIXED: Use correct column name 'starttime'
+            String sql = "SELECT * FROM workouts ORDER BY starttime DESC";
             Statement stmt = connection.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
 
@@ -708,7 +738,8 @@ public class DatabaseHelper {
     public List<Workout> getWorkoutsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         List<Workout> workouts = new ArrayList<>();
         try {
-            String sql = "SELECT * FROM workouts WHERE start_time BETWEEN ? AND ? ORDER BY start_time DESC";
+            // ✅ FIXED: Use correct column name 'starttime'
+            String sql = "SELECT * FROM workouts WHERE starttime BETWEEN ? AND ? ORDER BY starttime DESC";
             PreparedStatement pstmt = connection.prepareStatement(sql);
 
             pstmt.setTimestamp(1, Timestamp.valueOf(startDate));
@@ -735,7 +766,8 @@ public class DatabaseHelper {
 
     public void addExercise(Exercise exercise) {
         try {
-            String sql = "INSERT INTO exercises (name, muscle_group, equipment, difficulty, instructions) VALUES (?, ?, ?, ?, ?)";
+            // ✅ FIXED: Use correct column names from database schema
+            String sql = "INSERT INTO exercises (name, musclegroup, equipment, difficulty, instructions, gifurl) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement pstmt = connection.prepareStatement(sql);
 
             pstmt.setString(1, exercise.getName());
@@ -743,6 +775,7 @@ public class DatabaseHelper {
             pstmt.setString(3, exercise.getEquipment());
             pstmt.setString(4, exercise.getDifficulty());
             pstmt.setString(5, exercise.getInstructions());
+            pstmt.setString(6, exercise.getGifUrl());
 
             pstmt.executeUpdate();
             pstmt.close();
@@ -756,20 +789,21 @@ public class DatabaseHelper {
     public List<Exercise> getAllExercises() {
         List<Exercise> exercises = new ArrayList<>();
         try {
-            String sql = "SELECT * FROM exercises ORDER BY muscle_group, name";
+            // ✅ FIXED: Use correct column name 'musclegroup'
+            String sql = "SELECT * FROM exercises ORDER BY musclegroup, name";
             Statement stmt = connection.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
 
             while (rs.next()) {
-                // ✅ FIXED: Use 7-parameter constructor
+                // ✅ FIXED: Use 7-parameter constructor with correct column names
                 Exercise exercise = new Exercise(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getString("muscle_group"),
+                        rs.getString("musclegroup"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
                         rs.getString("instructions"),
-                        rs.getString("gifurl")  // Add this
+                        rs.getString("gifurl")
                 );
                 exercises.add(exercise);
             }
@@ -791,15 +825,15 @@ public class DatabaseHelper {
 
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                // ✅ FIXED: Use 7-parameter constructor
+                // ✅ FIXED: Use 7-parameter constructor with correct column names
                 exercise = new Exercise(
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getString("muscle_group"),
+                        rs.getString("musclegroup"),
                         rs.getString("equipment"),
                         rs.getString("difficulty"),
                         rs.getString("instructions"),
-                        rs.getString("gifurl")  // ✅ NOW INCLUDES GIF URL
+                        rs.getString("gifurl")
                 );
             }
 
@@ -886,12 +920,13 @@ public class DatabaseHelper {
     public Map<String, List<WorkoutSet>> getExerciseHistory(String exerciseName) {
         Map<String, List<WorkoutSet>> history = new HashMap<>();
         try {
+            // ✅ FIXED: Use correct table name 'workoutsets' and column names
             String sql = """
-                SELECT ws.*, w.start_time, w.name as workout_name
-                FROM workout_sets ws
-                JOIN workouts w ON ws.workout_id = w.id
-                WHERE ws.exercise_name = ?
-                ORDER BY w.start_time DESC
+                SELECT ws.*, w.starttime, w.name as workout_name
+                FROM workoutsets ws
+                JOIN workouts w ON ws.workoutid = w.id
+                WHERE ws.exercisename = ?
+                ORDER BY w.starttime DESC
                 """;
 
             PreparedStatement pstmt = connection.prepareStatement(sql);
@@ -900,7 +935,7 @@ public class DatabaseHelper {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                String workoutDate = rs.getTimestamp("start_time").toString();
+                String workoutDate = rs.getTimestamp("starttime").toString();
                 Exercise exercise = getExerciseByName(exerciseName);
 
                 if (exercise != null) {
@@ -924,12 +959,13 @@ public class DatabaseHelper {
     public Map<String, Object> getWorkoutStats() {
         Map<String, Object> stats = new HashMap<>();
         try {
+            // ✅ FIXED: Use correct column name 'totalvolume'
             String sql = """
                 SELECT 
                     COUNT(*) as total_workouts,
-                    SUM(total_volume) as total_volume,
-                    AVG(total_volume) as avg_volume,
-                    MAX(total_volume) as max_volume
+                    SUM(totalvolume) as total_volume,
+                    AVG(totalvolume) as avg_volume,
+                    MAX(totalvolume) as max_volume
                 FROM workouts
                 """;
 
@@ -999,11 +1035,204 @@ public class DatabaseHelper {
         }
     }
 
+    // ==================== WORKOUT LOGGING METHODS ====================
+    
+    /**
+     * Start a new workout for a user
+     */
+    public int startWorkout(int userId, String workoutName) {
+        try {
+            String sql = "INSERT INTO workouts (userid, name, starttime, totalvolume) VALUES (?, ?, ?, 0.0)";
+            PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, workoutName);
+            pstmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            
+            int affectedRows = pstmt.executeUpdate();
+            
+            if (affectedRows > 0) {
+                ResultSet generatedKeys = pstmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int workoutId = generatedKeys.getInt(1);
+                    System.out.println("✅ Started workout: " + workoutName + " (ID: " + workoutId + ")");
+                    generatedKeys.close();
+                    pstmt.close();
+                    return workoutId;
+                }
+            }
+            
+            pstmt.close();
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to start workout: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return -1;
+    }
+    
+    /**
+     * End a workout and calculate total volume
+     */
+    public boolean endWorkout(int workoutId) {
+        try {
+            // First, calculate total volume from all sets
+            double totalVolume = calculateWorkoutVolume(workoutId);
+            
+            String sql = "UPDATE workouts SET endtime = ?, totalvolume = ? WHERE id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            
+            pstmt.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+            pstmt.setDouble(2, totalVolume);
+            pstmt.setInt(3, workoutId);
+            
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+            
+            if (rowsAffected > 0) {
+                System.out.println("✅ Ended workout ID: " + workoutId + " (Total Volume: " + totalVolume + ")");
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to end workout: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    /**
+     * Add a set to an existing workout
+     */
+    public boolean addSetToWorkout(int workoutId, String exerciseName, int reps, double weight, String setType) {
+        try {
+            // Get exercise details
+            Exercise exercise = getExerciseByName(exerciseName);
+            if (exercise == null) {
+                System.err.println("❌ Exercise not found: " + exerciseName);
+                return false;
+            }
+            
+            String sql = "INSERT INTO workoutsets (workoutid, exercisename, musclegroup, reps, weight, settype, completed) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            
+            pstmt.setInt(1, workoutId);
+            pstmt.setString(2, exerciseName);
+            pstmt.setString(3, exercise.getMuscleGroup());
+            pstmt.setInt(4, reps);
+            pstmt.setDouble(5, weight);
+            pstmt.setString(6, setType != null ? setType : "NORMAL");
+            pstmt.setBoolean(7, true); // Mark as completed when added
+            
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+            
+            if (rowsAffected > 0) {
+                System.out.println("✅ Added set: " + exerciseName + " - " + reps + " reps @ " + weight + " lbs");
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to add set: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    /**
+     * Calculate total volume for a workout
+     */
+    private double calculateWorkoutVolume(int workoutId) {
+        double totalVolume = 0.0;
+        try {
+            String sql = "SELECT SUM(reps * weight) as total_volume FROM workoutsets WHERE workoutid = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, workoutId);
+            
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                totalVolume = rs.getDouble("total_volume");
+            }
+            
+            rs.close();
+            pstmt.close();
+            
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to calculate workout volume: " + e.getMessage());
+        }
+        return totalVolume;
+    }
+    
+    /**
+     * Get workout summary for a user
+     */
+    public Map<String, Object> getWorkoutSummary(int userId) {
+        Map<String, Object> summary = new HashMap<>();
+        try {
+            String sql = """
+                SELECT 
+                    COUNT(*) as total_workouts,
+                    SUM(totalvolume) as total_volume,
+                    AVG(totalvolume) as avg_volume,
+                    MAX(totalvolume) as max_volume,
+                    COUNT(DISTINCT DATE(starttime)) as workout_days
+                FROM workouts 
+                WHERE userid = ?
+                """;
+            
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                summary.put("total_workouts", rs.getInt("total_workouts"));
+                summary.put("total_volume", rs.getDouble("total_volume"));
+                summary.put("avg_volume", rs.getDouble("avg_volume"));
+                summary.put("max_volume", rs.getDouble("max_volume"));
+                summary.put("workout_days", rs.getInt("workout_days"));
+            }
+            
+            rs.close();
+            pstmt.close();
+            
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to get workout summary: " + e.getMessage());
+        }
+        return summary;
+    }
+    
+    /**
+     * Get recent workouts for a user (last 10)
+     */
+    public List<Workout> getRecentWorkouts(int userId, int limit) {
+        List<Workout> workouts = new ArrayList<>();
+        try {
+            String sql = "SELECT * FROM workouts WHERE userid = ? ORDER BY starttime DESC LIMIT ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            pstmt.setInt(2, limit);
+            
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                Workout workout = buildWorkoutFromResultSet(rs);
+                workouts.add(workout);
+            }
+            
+            rs.close();
+            pstmt.close();
+            
+        } catch (SQLException e) {
+            System.err.println("❌ Failed to get recent workouts: " + e.getMessage());
+        }
+        return workouts;
+    }
+
     // ==================== UPDATE/DELETE OPERATIONS ====================
 
     public boolean updateWorkout(int workoutId, Workout updatedWorkout) {
         try {
-            String sql = "UPDATE workouts SET name = ?, end_time = ?, total_volume = ?, notes = ? WHERE id = ?";
+            // ✅ FIXED: Use correct column names from database schema
+            String sql = "UPDATE workouts SET name = ?, endtime = ?, totalvolume = ?, notes = ? WHERE id = ?";
             PreparedStatement pstmt = connection.prepareStatement(sql);
 
             pstmt.setString(1, updatedWorkout.getName());
