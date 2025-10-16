@@ -2,6 +2,7 @@ package com.musclemmap.controllers;
 
 import com.musclemmap.models.*;
 import com.musclemmap.utils.DatabaseHelper;
+// Using AIInsightsWindow for UI; services are referenced there
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
@@ -13,7 +14,6 @@ import javafx.collections.ObservableList;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -62,6 +62,9 @@ public class ProgressController {
 
         // Setup table columns
         setupPersonalRecordsTable();
+
+        // Add AI features action bar
+        addIntelligenceActionsBar();
 
         System.out.println("✅ ProgressController initialized!");
     }
@@ -149,6 +152,54 @@ public class ProgressController {
             statsCardsContainer.getChildren().add(statsRow);
         }
     }
+
+    private void addIntelligenceActionsBar() {
+        if (statsCardsContainer == null) return;
+
+        HBox bar = new HBox(10);
+        bar.setAlignment(Pos.CENTER);
+        bar.setPadding(new Insets(10, 20, 0, 20));
+
+        Button btnPlan = new Button("🧠 Generate Plan");
+        Button btnRecommend = new Button("✨ Exercise Suggestions");
+        Button btnWeakness = new Button("⚠️ Detect Weaknesses");
+        Button btnDiet = new Button("🥗 Diet Plan");
+
+        String btnStyle = "-fx-background-color: #00d4ff; -fx-text-fill: #0b1020; -fx-font-weight: 700; -fx-background-radius: 8px; -fx-padding: 8 14;";
+        btnPlan.setStyle(btnStyle);
+        btnRecommend.setStyle(btnStyle);
+        btnWeakness.setStyle(btnStyle);
+        btnDiet.setStyle(btnStyle);
+
+        btnPlan.setOnAction(e -> onGeneratePlan());
+        btnRecommend.setOnAction(e -> onRecommendExercises());
+        btnWeakness.setOnAction(e -> onDetectWeaknesses());
+        btnDiet.setOnAction(e -> onDietPlan());
+
+        bar.getChildren().addAll(btnPlan, btnRecommend, btnWeakness, btnDiet);
+        statsCardsContainer.getChildren().add(0, bar);
+    }
+
+    private void onGeneratePlan() {
+        if (currentUser == null || currentUser.getId() == null) return;
+        new AIInsightsWindow(currentUser.getId(), dbHelper).show("Plan");
+    }
+
+    private void onRecommendExercises() {
+        if (currentUser == null || currentUser.getId() == null) return;
+        new AIInsightsWindow(currentUser.getId(), dbHelper).show("Recommendations");
+    }
+
+    private void onDetectWeaknesses() {
+        if (currentUser == null || currentUser.getId() == null) return;
+        new AIInsightsWindow(currentUser.getId(), dbHelper).show("Weaknesses");
+    }
+
+    private void onDietPlan() {
+        new AIInsightsWindow(currentUser.getId(), dbHelper).show("Diet");
+    }
+
+    
 
     private VBox createStatCard(String icon, String value, String label, String color) {
         VBox card = new VBox(8);

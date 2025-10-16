@@ -12,318 +12,87 @@
 <?import javafx.scene.effect.DropShadow?>
 
 <BorderPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.musclemmap.controllers.MainController">
-<top>
-        <HBox alignment="CENTER_RIGHT"
-              spacing="15.0"
-              style="-fx-background-color: #2b2b2b; -fx-padding: 10px 20px;">
-
-            <!-- App Title -->
-            <Label text="💪 Muscle Map"
-                   style="-fx-font-size: 20px;
-                      -fx-font-weight: bold;
-                      -fx-text-fill: white;" />
-
-            <!-- Spacer to push logout button to right -->
+    <top>
+        <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-background-color: #2b2b2b; -fx-padding: 10px 20px;">
+            <Label text="💪 Muscle Map" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
             <Region HBox.hgrow="ALWAYS" />
-
-            <!-- Logout Button -->
-            <!-- Logout Button - FIXED VISIBILITY -->
-            <Button fx:id="logoutButton" text="⚡ Logout"
-                    style="-fx-background-color: linear-gradient(to right, #ff5555, #ff3333);
-               -fx-text-fill: #FFFFFF;
-               -fx-font-size: 16px;
-               -fx-font-weight: bold;
-               -fx-padding: 10px 24px;
-               -fx-background-radius: 8px;
-               -fx-border-color: #FFFFFF;
-               -fx-border-width: 2px;
-               -fx-border-radius: 8px;
-               -fx-cursor: hand;
-               -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 6, 0, 0, 3);"/>
+            <Button fx:id="logoutButton" text="⚡ Logout" style="-fx-background-color: linear-gradient(to right, #ff5555, #ff3333); -fx-text-fill: #FFFFFF; -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-border-color: #FFFFFF; -fx-border-width: 2px; -fx-border-radius: 8px; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 6, 0, 0, 3);"/>
+        </HBox>
+    </top>
 
         </HBox>
     </top>
     <center>
         <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" style="-fx-background-color: #1a1a1a;">
             <tabs>
+                <!-- HOME TAB -->
                 <Tab fx:id="homeTab" text="Home">
                     <content>
                         <ScrollPane fitToWidth="true" style="-fx-background: #0c0c0c; -fx-background-color: #0c0c0c;">
                             <content>
-                                <VBox spacing="25.0" style="-fx-padding: 30px; -fx-background-color: #0c0c0c;">
-
-                                    <!-- Hero Section with Animated Greeting -->
-                                    <VBox spacing="10.0" style="-fx-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                                  -fx-padding: 40px; -fx-background-radius: 20px;
-                                                  -fx-effect: dropshadow(gaussian, rgba(102,126,234,0.4), 20, 0, 0, 10);">
-                                        <Label fx:id="welcomeLabel" style="-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: white;
-                                                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 3, 0, 0, 2);"/>
-
-                                        <HBox spacing="30.0" alignment="CENTER_LEFT">
-                                            <VBox spacing="5.0">
-                                                <Label fx:id="streakLabel" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FFD700;"/>
-                                                <Label fx:id="lastWorkoutLabel" style="-fx-font-size: 14px; -fx-text-fill: rgba(255,255,255,0.8);"/>
+                                <VBox spacing="20.0" style="-fx-padding: 24px; -fx-background-color: #0c0c0c;">
+                                    <VBox spacing="8.0" style="-fx-padding: 10px;">
+                                        <Label fx:id="welcomeLabel" text="Welcome" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;"/>
+                                        <HBox spacing="12.0" alignment="CENTER_LEFT">
+                                            <VBox>
+                                                <Label fx:id="streakLabel" text="Current Streak: 0" style="-fx-text-fill: #FFD700; -fx-font-weight: bold;"/>
+                                                <Label fx:id="lastWorkoutLabel" text="Last Workout: --" style="-fx-text-fill: #E0E0E0;"/>
                                             </VBox>
-
-                                            <Region HBox.hgrow="ALWAYS"/>
-
-                                            <Button fx:id="startQuickWorkoutBtn" text="⚡ Start Workout"
-                                                    style="-fx-background-color: linear-gradient(to right, #00d4ff, #0099cc);
-                                           -fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;
-                                           -fx-padding: 15px 35px; -fx-background-radius: 15px; -fx-cursor: hand;
-                                           -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.5), 10, 0, 0, 5);"/>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <Button fx:id="startQuickWorkoutBtn" text="⚡ Start Workout" />
                                         </HBox>
                                     </VBox>
 
-                                    <!-- Quick Actions Grid -->
-                                    <!-- Quick Actions Grid - ULTRA SEXY VERSION -->
-                                    <VBox spacing="15.0">
-                                        <Label text="⚡ Quick Actions"
-                                               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+                                    <HBox spacing="20.0" alignment="CENTER_LEFT">
+                                        <VBox fx:id="quickSetCard" spacing="8.0" style="-fx-background-color:#1f1f1f; -fx-padding: 14px; -fx-background-radius:12px;">
+                                            <Label text="⚡ Quick Set" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
+                                            <Label text="Log a quick set" style="-fx-text-fill: #E0E0E0;"/>
+                                        </VBox>
+                                        <VBox fx:id="progressCard" spacing="8.0" style="-fx-background-color:#1f1f1f; -fx-padding: 14px; -fx-background-radius:12px;">
+                                            <Label text="📈 Progress" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
+                                            <Label text="View analytics" style="-fx-text-fill: #E0E0E0;"/>
+                                        </VBox>
+                                    </HBox>
 
-                                        <GridPane hgap="20.0" vgap="20.0">
-                                            <!-- Quick Log Set Button -->
-                                            <VBox fx:id="quickSetCard" spacing="10.0" alignment="CENTER"
-                                                  GridPane.columnIndex="0" GridPane.rowIndex="0"
-                                                  onMouseClicked="#handleQuickSetClick"
-                                                  style="-fx-background-color: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                     -fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;
-                     -fx-effect: dropshadow(gaussian, rgba(240,147,251,0.6), 20, 0, 0, 10);
-                     -fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;">
-                                                <Label text="🏋️" style="-fx-font-size: 56px;">
-                                                    <effect>
-                                                        <javafx.scene.effect.DropShadow color="rgba(0,0,0,0.5)" radius="5" offsetY="3"/>
-                                                    </effect>
-                                                </Label>
-                                                <Label text="Quick Set"
-                                                       style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;
-                          -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 3, 0, 0, 2);"/>
-                                                <Label text="Log a quick set"
-                                                       style="-fx-font-size: 13px; -fx-text-fill: rgba(255,255,255,0.95);
-                          -fx-font-weight: 600;"/>
-                                                <Label text="➤"
-                                                       style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;
-                          -fx-opacity: 0.8;"/>
-                                            </VBox>
-
-                                            <!-- View Progress Button -->
-                                            <VBox fx:id="progressCard" spacing="10.0" alignment="CENTER"
-                                                  GridPane.columnIndex="1" GridPane.rowIndex="0"
-                                                  onMouseClicked="#handleProgressClick"
-                                                  style="-fx-background-color: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                     -fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;
-                     -fx-effect: dropshadow(gaussian, rgba(79,172,254,0.6), 20, 0, 0, 10);
-                     -fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;">
-                                                <Label text="📊" style="-fx-font-size: 56px;">
-                                                    <effect>
-                                                        <javafx.scene.effect.DropShadow color="rgba(0,0,0,0.5)" radius="5" offsetY="3"/>
-                                                    </effect>
-                                                </Label>
-                                                <Label text="Progress"
-                                                       style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;
-                          -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 3, 0, 0, 2);"/>
-                                                <Label text="View analytics"
-                                                       style="-fx-font-size: 13px; -fx-text-fill: rgba(255,255,255,0.95);
-                          -fx-font-weight: 600;"/>
-                                                <Label text="➤"
-                                                       style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;
-                          -fx-opacity: 0.8;"/>
-                                            </VBox>
-
-                                            <!-- Muscle Map Button -->
-                                            <VBox fx:id="muscleMapCard" spacing="10.0" alignment="CENTER"
-                                                  GridPane.columnIndex="2" GridPane.rowIndex="0"
-                                                  onMouseClicked="#handleMuscleMapClick"
-                                                  style="-fx-background-color: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                     -fx-padding: 35px; -fx-background-radius: 25px; -fx-cursor: hand;
-                     -fx-effect: dropshadow(gaussian, rgba(250,112,154,0.6), 20, 0, 0, 10);
-                     -fx-border-color: rgba(255,255,255,0.3); -fx-border-width: 2px; -fx-border-radius: 25px;">
-                                                <Label text="💪" style="-fx-font-size: 56px;">
-                                                    <effect>
-                                                        <javafx.scene.effect.DropShadow color="rgba(0,0,0,0.5)" radius="5" offsetY="3"/>
-                                                    </effect>
-                                                </Label>
-                                                <Label text="Muscle Map"
-                                                       style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;
-                          -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 3, 0, 0, 2);"/>
-                                                <Label text="Browse exercises"
-                                                       style="-fx-font-size: 13px; -fx-text-fill: rgba(255,255,255,0.95);
-                          -fx-font-weight: 600;"/>
-                                                <Label text="➤"
-                                                       style="-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;
-                          -fx-opacity: 0.8;"/>
-                                            </VBox>
-                                        </GridPane>
+                                    <VBox spacing="12.0">
+                                        <Label text="💡 Today's Motivation" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
+                                        <Label fx:id="motivationLabel" text="Keep going!" wrapText="true" style="-fx-text-fill: #E0E0E0;"/>
                                     </VBox>
 
-
-                                    <!-- Stats Dashboard -->
-                                    <VBox spacing="15.0">
-                                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                                            <Label text="📈 Your Stats"
-                                                   style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-                                            <Label text="Last 30 days"
-                                                   style="-fx-font-size: 14px; -fx-text-fill: #00d4ff; -fx-font-style: italic;"/>
-                                        </HBox>
-
-                                        <VBox fx:id="statsCardsContainer" spacing="15.0"/>
-
+                                    <VBox spacing="12.0">
+                                        <Label text="🏆 Recent Achievements" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
+                                        <HBox fx:id="achievementsBox" spacing="10.0" />
                                     </VBox>
-
-                                    <!-- Recent Workouts with Beautiful Cards -->
-                                    <VBox spacing="15.0">
-                                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                                            <Label text="🔥 Recent Workouts"
-                                                   style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-                                            <Region HBox.hgrow="ALWAYS"/>
-                                            <Button text="View All →"
-                                                    style="-fx-background-color: transparent; -fx-text-fill: #00d4ff;
-                                           -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand;"/>
-                                        </HBox>
-
-                                        <VBox fx:id="recentWorkoutsBox" spacing="12.0"/>
-                                    </VBox>
-
-                                    <!-- Today's Motivation -->
-                                    <VBox spacing="15.0" style="-fx-background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-                                                  -fx-padding: 30px; -fx-background-radius: 20px;
-                                                  -fx-effect: dropshadow(gaussian, rgba(67,233,123,0.4), 15, 0, 0, 8);">
-                                        <Label text="💡 Today's Motivation"
-                                               style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-                                        <Label fx:id="motivationLabel" wrapText="true"
-                                               style="-fx-font-size: 16px; -fx-text-fill: white; -fx-font-style: italic; -fx-line-spacing: 5px;"/>
-                                    </VBox>
-
-                                    <!-- Achievement Showcase -->
-                                    <VBox spacing="15.0">
-                                        <Label text="🏆 Recent Achievements"
-                                               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-
-                                        <HBox fx:id="achievementsBox" spacing="15.0"/>
-                                    </VBox>
-
                                 </VBox>
                             </content>
                         </ScrollPane>
                     </content>
                 </Tab>
 
+                <!-- MUSCLE MAP TAB -->
                 <Tab fx:id="muscleMapTab" text="💪 Muscle Map">
                     <content>
-                        <HBox spacing="20.0" style="-fx-background-color: #1a1a1a; -fx-padding: 20px;">
-
-                            <!-- LEFT: Muscle Map Display -->
-                            <VBox spacing="15.0" prefWidth="650.0">
-                                <ScrollPane fx:id="muscleMapScrollPane" fitToWidth="true" fitToHeight="true"
-                                            style="-fx-background: transparent; -fx-background-color: transparent;">
+                        <HBox spacing="20.0" style="-fx-padding: 16px; -fx-background-color: transparent;">
+                            <VBox spacing="8.0" prefWidth="520.0">
+                                <ScrollPane fx:id="muscleMapScrollPane" fitToWidth="true" fitToHeight="true">
                                     <content>
-                                        <Pane fx:id="muscleMapPane" prefWidth="620.0" prefHeight="850.0" />
+                                        <Pane fx:id="muscleMapPane" prefWidth="500.0" prefHeight="700.0" />
                                     </content>
                                 </ScrollPane>
                             </VBox>
-
-                            <!-- RIGHT: Exercise Details Panel - PERFECTLY BALANCED -->
-                            <VBox spacing="20.0" prefWidth="650.0" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: #2b2b2b; -fx-padding: 25px; -fx-background-radius: 15px;">
-
-                                <!-- Selected Muscle Header -->
-                                <Label fx:id="selectedMuscleLabel"
-                                       style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;"
-                                       wrapText="true" />
-
-                                <!-- Exercise Visual Guide Box - COMPACT (180px) -->
-                                <VBox spacing="10.0" style="-fx-background-color: #1f1f1f; -fx-padding: 15px;
-                            -fx-background-radius: 12px; -fx-border-color: rgba(0,212,255,0.4);
-                            -fx-border-width: 2px; -fx-border-radius: 12px;"
-                                      prefHeight="180.0" maxHeight="180.0">
-                                    <Label text="📸 Exercise Visual Guide"
-                                           style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;"/>
-
-                                    <StackPane fx:id="exerciseImageContainer"
-                                               style="-fx-background-color: #ffffff; -fx-background-radius: 10px;
-                      -fx-border-color: #00d4ff; -fx-border-width: 2px; -fx-border-radius: 10px;"
-                                               prefHeight="140.0" maxHeight="140.0" prefWidth="590.0">
-
-                                        <VBox fx:id="imagePlaceholder" alignment="CENTER" spacing="8.0">
-                                            <Label text="🏋️" style="-fx-font-size: 42px;"/>
-                                            <Label text="Select an exercise to see how it's done"
-                                                   style="-fx-text-fill: #808080; -fx-font-size: 11px; -fx-font-weight: 600;"
-                                                   wrapText="true"/>
-                                        </VBox>
-
-                                        <ImageView fx:id="exerciseImageView"
-                                                   fitHeight="136.0" fitWidth="586.0"
-                                                   preserveRatio="true"
-                                                   visible="false"/>
-
-                                        <VBox fx:id="imageLoadingIndicator" alignment="CENTER" spacing="8.0" visible="false">
-                                            <ProgressIndicator prefWidth="35.0" prefHeight="35.0"
-                                                               style="-fx-progress-color: #00d4ff;"/>
-                                            <Label text="Loading..."
-                                                   style="-fx-text-fill: #00d4ff; -fx-font-size: 11px; -fx-font-weight: bold;"/>
-                                        </VBox>
-                                    </StackPane>
-                                </VBox>
-
-                                <!-- Exercise List Box - SMALLER (200px) -->
-                                <VBox spacing="10.0" prefHeight="200.0" maxHeight="200.0">
-                                    <Label text="🏋️ Exercises for this muscle:"
-                                           style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: white;" />
-
-                                    <ListView fx:id="exerciseListView" prefHeight="170.0" maxHeight="170.0"
-                                              VBox.vgrow="ALWAYS"
-                                              style="-fx-background-color: #1f1f1f;
-                     -fx-control-inner-background: #2b2b2b;
-                     -fx-border-color: #00d4ff;
-                     -fx-border-radius: 10px;
-                     -fx-background-radius: 10px;
-                     -fx-border-width: 2px;
-                     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 10, 0, 0, 5);
-                     -fx-font-size: 13px;">
-                                        <placeholder>
-                                            <VBox alignment="CENTER" spacing="10.0" style="-fx-padding: 30px;">
-                                                <Label text="🏋️" style="-fx-font-size: 40px;"/>
-                                                <Label text="No exercises loaded"
-                                                       style="-fx-text-fill: #808080; -fx-font-size: 13px; -fx-font-weight: bold;"/>
-                                                <Label text="Click a muscle group"
-                                                       style="-fx-text-fill: #606060; -fx-font-size: 11px;"/>
-                                            </VBox>
-                                        </placeholder>
-                                    </ListView>
-                                </VBox>
-
-                                <!-- Exercise Instructions Box - BIGGER (320px) with MORE SPACING -->
-                                <VBox spacing="10.0" prefHeight="320.0" maxHeight="320.0" VBox.vgrow="ALWAYS"
-                                      style="-fx-padding: 10 0 0 0;">
-                                    <Label text="📋 Exercise Instructions:"
-                                           style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                                    <TextArea fx:id="exerciseDescriptionArea" wrapText="true"
-                                              prefHeight="290.0" maxHeight="290.0" VBox.vgrow="ALWAYS"
-                                              promptText="💡 Select an exercise from the list above to see detailed instructions..."
-                                              style="-fx-background-color: #1f1f1f;
-                     -fx-control-inner-background: #2b2b2b;
-                     -fx-text-fill: #FFFFFF;
-                     -fx-font-size: 14px;
-                     -fx-font-weight: 600;
-                     -fx-border-color: #00d4ff;
-                     -fx-border-radius: 10px;
-                     -fx-background-radius: 10px;
-                     -fx-border-width: 2px;
-                     -fx-padding: 15px;
-                     -fx-font-family: 'Segoe UI', Arial, sans-serif;
-                     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 10, 0, 0, 5);
-                     -fx-prompt-text-fill: #808080;"/>
-                                </VBox>
-
+                            <VBox spacing="12.0" HBox.hgrow="ALWAYS" style="-fx-padding:12px;">
+                                <Label fx:id="selectedMuscleLabel" text="Selected Muscle" style="-fx-text-fill:#00d4ff; -fx-font-weight:bold;"/>
+                                <ListView fx:id="exerciseListView" prefHeight="300.0" />
+                                <StackPane fx:id="exerciseImageContainer" prefHeight="220.0">
+                                    <ImageView fx:id="exerciseImageView" fitHeight="200.0" preserveRatio="true" />
+                                </StackPane>
+                                <TextArea fx:id="exerciseDescriptionArea" wrapText="true" prefRowCount="6" />
                             </VBox>
                         </HBox>
                     </content>
                 </Tab>
 
-
-
-
-
+                <!-- WORKOUT TAB -->
                 <Tab fx:id="workoutTab" text="🏋️ Workout">
                     <content>
                         <ScrollPane fitToWidth="true" style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
@@ -345,7 +114,7 @@
                                         <Label fx:id="currentWorkoutStatsLabel" text="Start a workout to begin logging!" style="-fx-font-size: 14px; -fx-text-fill: #b0b0b0;" wrapText="true" />
                                     </VBox>
 
-                                    <!-- Exercise Input Section - ADD THIS -->
+                                    <!-- Exercise Input Section -->
                                     <VBox spacing="15.0" style="-fx-background-color: #2b2b2b; -fx-padding: 20px; -fx-background-radius: 12px;">
                                         <Label text="➕ Log Exercise Set" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" />
 
@@ -387,7 +156,7 @@
                     </content>
                 </Tab>
 
-
+                <!-- PROGRESS TAB -->
                 <Tab fx:id="progressTab" text="Progress">
                     <content>
                         <ScrollPane fitToWidth="true" style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
@@ -486,6 +255,14 @@
                     </content>
                 </Tab>
 
+                <!-- AI TAB -->
+                <Tab fx:id="aiTab" text="AI">
+                    <content>
+                        <VBox fx:id="aiContentContainer" spacing="16.0" style="-fx-padding: 20px; -fx-background-color: #1a1a1a;">
+                            <!-- AI content will be injected here by MainController -->
+                        </VBox>
+                    </content>
+                </Tab>
             </tabs>
         </TabPane>
     </center>

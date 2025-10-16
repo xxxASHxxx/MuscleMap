@@ -147,6 +147,8 @@ public class MainController implements Initializable {
     private TabPane mainTabPane;
     @FXML
     private Tab homeTab, workoutTab, muscleMapTab, progressTab;
+    @FXML
+    private Tab aiTab;
     @FXML private ComboBox<Exercise> exerciseComboBox;
     @FXML private TextField weightField;
     @FXML private TextField repsField;
@@ -453,6 +455,8 @@ public class MainController implements Initializable {
             // Load progress data
             System.out.println("🔄 Loading initial progress data");
             loadProgressCharts();
+            // Robustly embed AI content into the AI tab
+            updateAITabContent("Plan");
         }
     }
     private void updateWelcomeLabel() {
@@ -3204,6 +3208,42 @@ public class MainController implements Initializable {
         }
     }
 
+    // Robust AI tab content updater
+    private void updateAITabContent(String section) {
+        if (currentUser == null || aiTab == null) {
+            showAlert(Alert.AlertType.INFORMATION, "Login required", "Please login to use AI features.");
+            return;
+        }
+        try {
+            AIInsightsWindow ai = new AIInsightsWindow(currentUser.getId(), dbHelper);
+            aiTab.setContent(ai.createContent(section));
+            mainTabPane.getSelectionModel().select(aiTab);
+            System.out.println("✅ AI tab updated: " + section);
+        } catch (Exception e) {
+            System.err.println("Failed to update AI tab: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "AI Tab Error", "Failed to load AI content. Please try again.");
+        }
+    }
+
+    @FXML
+    private void handleOpenAIPlan() {
+        updateAITabContent("Plan");
+    }
+
+    @FXML
+    private void handleOpenAIRecs() {
+        updateAITabContent("Recommendations");
+    }
+
+    @FXML
+    private void handleOpenAIWeak() {
+        updateAITabContent("Weaknesses");
+    }
+
+    @FXML
+    private void handleOpenAIDiet() {
+        updateAITabContent("Diet");
+    }
 
 }
 
