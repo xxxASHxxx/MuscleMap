@@ -301,6 +301,7 @@ public class AIInsightsWindow {
         TextField heightField = new TextField(String.valueOf(dr.heightCm));
         ComboBox<String> goalBox = new ComboBox<>(FXCollections.observableArrayList("muscle_gain", "fat_loss", "maintenance"));
         goalBox.getSelectionModel().select(dr.goal);
+        com.musclemmap.utils.UIStyler.styleComboBox(goalBox);  // ✅ Apply visibility styling
         Button gen = createStyledButton("Generate Meal Plan", "#00d4ff");
 
         VBox resultBox = new VBox(8);

@@ -117,10 +117,23 @@ public class IntelligentDietGenerator {
         double carbsPerMeal = targets.carbsG / meals;
         double fatsPerMeal = targets.fatsG / meals;
 
-        for (int i = 1; i <= meals; i++) {
+        // Realistic meal names and timing
+        String[] mealNames = {"Breakfast", "Mid-Morning Snack", "Lunch", "Afternoon Snack", "Dinner", "Evening Snack"};
+        String[] mealTimes = {"7:00 AM", "10:00 AM", "1:00 PM", "4:00 PM", "7:00 PM", "9:00 PM"};
+        
+        for (int i = 0; i < meals; i++) {
             Meal m = new Meal();
-            m.name = "Meal " + i;
-            m.items.addAll(suggestMealItems(req, proteinPerMeal, carbsPerMeal, fatsPerMeal));
+            m.name = mealNames[i] + " (" + mealTimes[i] + ")";
+            
+            // Adjust macros based on meal timing
+            double proteinMultiplier = (i == 0 || i == meals - 1) ? 1.2 : 1.0; // More protein for breakfast and dinner
+            double carbMultiplier = (i == 0 || i == 2) ? 1.3 : 0.8; // More carbs for breakfast and lunch
+            double fatMultiplier = (i == 2 || i == 4) ? 1.2 : 0.9; // More fats for lunch and dinner
+            
+            m.items.addAll(suggestMealItems(req, 
+                proteinPerMeal * proteinMultiplier, 
+                carbsPerMeal * carbMultiplier, 
+                fatsPerMeal * fatMultiplier));
             plan.meals.add(m);
         }
 
@@ -133,49 +146,114 @@ public class IntelligentDietGenerator {
         boolean vegetarian = req.dietaryRestrictions.contains("vegetarian") || req.dietaryRestrictions.contains("vegan");
         boolean glutenFree = req.dietaryRestrictions.contains("gluten_free");
         boolean dairyFree = req.dietaryRestrictions.contains("dairy_free");
+        boolean keto = req.preferences.contains("keto");
+        boolean paleo = req.preferences.contains("paleo");
 
+        // Protein sources - more diverse and realistic
         if (!vegetarian) {
-            MealItem chicken = new MealItem();
-            chicken.name = "Chicken breast";
-            chicken.grams = round(protein / 0.31 * 100, 0);
-            chicken.notes = "Lean protein";
-            items.add(chicken);
+            String[] proteins = {"Chicken breast", "Salmon fillet", "Lean beef", "Turkey breast", "Eggs", "Greek yogurt"};
+            String proteinChoice = proteins[(int)(Math.random() * proteins.length)];
+            
+            MealItem proteinItem = new MealItem();
+            proteinItem.name = proteinChoice;
+            double proteinDensity = getProteinDensity(proteinChoice);
+            proteinItem.grams = round(protein / proteinDensity * 100, 0);
+            proteinItem.notes = "High-quality protein";
+            items.add(proteinItem);
         } else {
-            MealItem tofu = new MealItem();
-            tofu.name = "Tofu";
-            tofu.grams = round(protein / 0.08 * 100, 0);
-            tofu.notes = "Plant protein";
-            items.add(tofu);
+            String[] vegProteins = {"Tofu", "Tempeh", "Lentils", "Chickpeas", "Quinoa", "Black beans"};
+            String proteinChoice = vegProteins[(int)(Math.random() * vegProteins.length)];
+            
+            MealItem proteinItem = new MealItem();
+            proteinItem.name = proteinChoice;
+            double proteinDensity = getProteinDensity(proteinChoice);
+            proteinItem.grams = round(protein / proteinDensity * 100, 0);
+            proteinItem.notes = "Plant-based protein";
+            items.add(proteinItem);
         }
 
-        if (!glutenFree) {
-            MealItem rice = new MealItem();
-            rice.name = "Cooked rice";
-            rice.grams = round(carbs / 0.28 * 100, 0);
-            rice.notes = "Complex carbs";
-            items.add(rice);
-        } else {
-            MealItem potato = new MealItem();
-            potato.name = "Potato";
-            potato.grams = round(carbs / 0.17 * 100, 0);
-            potato.notes = "Gluten-free carb";
-            items.add(potato);
+        // Carbohydrate sources - more variety
+        if (!keto) {
+            String[] carbSources = {"Brown rice", "Sweet potato", "Oats", "Quinoa", "Whole wheat bread", "Banana"};
+            String carbChoice = carbSources[(int)(Math.random() * carbSources.length)];
+            
+            if (!glutenFree || !carbChoice.contains("wheat")) {
+                MealItem carbItem = new MealItem();
+                carbItem.name = carbChoice;
+                double carbDensity = getCarbDensity(carbChoice);
+                carbItem.grams = round(carbs / carbDensity * 100, 0);
+                carbItem.notes = "Complex carbohydrates";
+                items.add(carbItem);
+            }
         }
 
-        if (!dairyFree) {
-            MealItem yogurt = new MealItem();
-            yogurt.name = "Greek yogurt";
-            yogurt.grams = round(fats / 0.04 * 100, 0);
-            yogurt.notes = "Healthy fats & protein";
-            items.add(yogurt);
-        } else {
-            MealItem olive = new MealItem();
-            olive.name = "Olive oil";
-            olive.grams = round(fats / 1.0 * 11, 0);
-            olive.notes = "Healthy fat";
-            items.add(olive);
-        }
+        // Fat sources - more realistic options
+        String[] fatSources = {"Avocado", "Olive oil", "Almonds", "Walnuts", "Coconut oil", "Chia seeds"};
+        String fatChoice = fatSources[(int)(Math.random() * fatSources.length)];
+        
+        MealItem fatItem = new MealItem();
+        fatItem.name = fatChoice;
+        double fatDensity = getFatDensity(fatChoice);
+        fatItem.grams = round(fats / fatDensity * 100, 0);
+        fatItem.notes = "Healthy fats";
+        items.add(fatItem);
+
+        // Add vegetables for micronutrients
+        String[] vegetables = {"Broccoli", "Spinach", "Bell peppers", "Carrots", "Asparagus", "Brussels sprouts"};
+        String vegChoice = vegetables[(int)(Math.random() * vegetables.length)];
+        
+        MealItem vegItem = new MealItem();
+        vegItem.name = vegChoice;
+        vegItem.grams = 150; // Standard serving
+        vegItem.notes = "Rich in vitamins and minerals";
+        items.add(vegItem);
+
         return items;
+    }
+
+    private double getProteinDensity(String food) {
+        // Protein per 100g
+        return switch (food.toLowerCase()) {
+            case "chicken breast" -> 31.0;
+            case "salmon fillet" -> 25.0;
+            case "lean beef" -> 26.0;
+            case "turkey breast" -> 29.0;
+            case "eggs" -> 13.0;
+            case "greek yogurt" -> 10.0;
+            case "tofu" -> 8.0;
+            case "tempeh" -> 19.0;
+            case "lentils" -> 9.0;
+            case "chickpeas" -> 8.9;
+            case "quinoa" -> 4.4;
+            case "black beans" -> 8.9;
+            default -> 20.0;
+        };
+    }
+
+    private double getCarbDensity(String food) {
+        // Carbs per 100g
+        return switch (food.toLowerCase()) {
+            case "brown rice" -> 23.0;
+            case "sweet potato" -> 20.0;
+            case "oats" -> 66.0;
+            case "quinoa" -> 22.0;
+            case "whole wheat bread" -> 41.0;
+            case "banana" -> 23.0;
+            default -> 25.0;
+        };
+    }
+
+    private double getFatDensity(String food) {
+        // Fat per 100g
+        return switch (food.toLowerCase()) {
+            case "avocado" -> 15.0;
+            case "olive oil" -> 100.0;
+            case "almonds" -> 49.0;
+            case "walnuts" -> 65.0;
+            case "coconut oil" -> 100.0;
+            case "chia seeds" -> 31.0;
+            default -> 20.0;
+        };
     }
 
     private List<String> buildShoppingList(MealPlan plan) {

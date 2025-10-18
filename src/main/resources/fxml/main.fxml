@@ -10,244 +10,711 @@
 <?import javafx.scene.chart.AreaChart?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.Node?>
+<?import javafx.scene.layout.StackPane?>
 
-<BorderPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.musclemmap.controllers.MainController">
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.musclemmap.controllers.MainController">
+
+    <!-- Enhanced Top App Bar -->
     <top>
-        <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-background-color: #2b2b2b; -fx-padding: 10px 20px;">
-            <Label text="💪 Muscle Map" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
+        <HBox alignment="CENTER_RIGHT"
+              spacing="15.0"
+              style="-fx-background-color: #2b2b2b; 
+                     -fx-padding: 15px 25px;
+                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 5);
+                     -fx-border-color: rgba(0,212,255,0.2);
+                     -fx-border-width: 0 0 2px 0;">
+            <Label text="💪 MUSCLE MAP"
+                   style="-fx-font-size: 24px; 
+                          -fx-font-weight: bold; 
+                          -fx-text-fill: white;
+                          -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 4, 0, 0, 2);" />
             <Region HBox.hgrow="ALWAYS" />
-            <Button fx:id="logoutButton" text="⚡ Logout" style="-fx-background-color: linear-gradient(to right, #ff5555, #ff3333); -fx-text-fill: #FFFFFF; -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-border-color: #FFFFFF; -fx-border-width: 2px; -fx-border-radius: 8px; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 6, 0, 0, 3);"/>
+            <Button fx:id="logoutButton"
+                    text="⚡ Logout"
+                    style="-fx-background-color: #ff5555;
+                           -fx-text-fill: #FFFFFF;
+                           -fx-font-size: 16px;
+                           -fx-font-weight: bold;
+                           -fx-padding: 12px 28px;
+                           -fx-background-radius: 10px;
+                           -fx-border-color: rgba(255,255,255,0.3);
+                           -fx-border-width: 1px;
+                           -fx-border-radius: 10px;
+                           -fx-cursor: hand;
+                           -fx-effect: dropshadow(gaussian, rgba(255,85,85,0.4), 8, 0, 0, 4);" />
         </HBox>
     </top>
 
-        </HBox>
-    </top>
+    <!-- Main Content -->
     <center>
         <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" style="-fx-background-color: #1a1a1a;">
             <tabs>
-                <!-- HOME TAB -->
-                <Tab fx:id="homeTab" text="Home">
+
+                <!-- ========================= HOME TAB ========================= -->
+                <Tab fx:id="homeTab" text="🏠 Home">
                     <content>
-                        <ScrollPane fitToWidth="true" style="-fx-background: #0c0c0c; -fx-background-color: #0c0c0c;">
+                        <ScrollPane fitToWidth="true"
+                                    style="-fx-background: #0c0c0c; -fx-background-color: #0c0c0c;">
                             <content>
-                                <VBox spacing="20.0" style="-fx-padding: 24px; -fx-background-color: #0c0c0c;">
-                                    <VBox spacing="8.0" style="-fx-padding: 10px;">
-                                        <Label fx:id="welcomeLabel" text="Welcome" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;"/>
-                                        <HBox spacing="12.0" alignment="CENTER_LEFT">
-                                            <VBox>
-                                                <Label fx:id="streakLabel" text="Current Streak: 0" style="-fx-text-fill: #FFD700; -fx-font-weight: bold;"/>
-                                                <Label fx:id="lastWorkoutLabel" text="Last Workout: --" style="-fx-text-fill: #E0E0E0;"/>
+                                <VBox spacing="24.0" style="-fx-padding: 24px; -fx-background-color: #0c0c0c;">
+
+                                    <!-- Enhanced Welcome + Stats Header -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label fx:id="welcomeLabel"
+                                               text="Welcome"
+                                               style="-fx-font-size: 32px; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-text-fill: #FFFFFF;
+                                                      -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 4, 0, 0, 2);"/>
+                                        <HBox spacing="20.0" alignment="CENTER_LEFT">
+                                            <VBox spacing="8.0">
+                                                <Label fx:id="streakLabel"
+                                                       text="Current Streak: 0"
+                                                       style="-fx-text-fill: #FFD700; 
+                                                              -fx-font-weight: bold;
+                                                              -fx-font-size: 16px;
+                                                              -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.3), 2, 0, 0, 1);"/>
+                                                <Label fx:id="lastWorkoutLabel"
+                                                       text="Last Workout: --"
+                                                       style="-fx-text-fill: #E0E0E0;
+                                                              -fx-font-size: 14px;"/>
                                             </VBox>
                                             <Region HBox.hgrow="ALWAYS" />
-                                            <Button fx:id="startQuickWorkoutBtn" text="⚡ Start Workout" />
+                                            <Button fx:id="startQuickWorkoutBtn"
+                                                    text="🚀 Start Quick Workout"
+                                                    prefWidth="220.0" 
+                                                    prefHeight="52.0"
+                                                    style="-fx-background-color: #00d4ff;
+                                                           -fx-text-fill: white;
+                                                           -fx-font-size: 18px;
+                                                           -fx-font-weight: bold;
+                                                           -fx-background-radius: 12px;
+                                                           -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.4), 8, 0, 0, 4);"/>
                                         </HBox>
                                     </VBox>
 
-                                    <HBox spacing="20.0" alignment="CENTER_LEFT">
-                                        <VBox fx:id="quickSetCard" spacing="8.0" style="-fx-background-color:#1f1f1f; -fx-padding: 14px; -fx-background-radius:12px;">
-                                            <Label text="⚡ Quick Set" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
-                                            <Label text="Log a quick set" style="-fx-text-fill: #E0E0E0;"/>
+                                    <Separator />
+
+                                    <!-- Enhanced Quick Cards -->
+                                    <HBox spacing="25.0" alignment="CENTER_LEFT">
+                                        <VBox fx:id="quickSetCard" spacing="10.0"
+                                              style="-fx-background-color: #2b2b2b; 
+                                                     -fx-padding: 20px; 
+                                                     -fx-background-radius: 15px;
+                                                     -fx-border-color: rgba(255,110,199,0.3);
+                                                     -fx-border-width: 2px;
+                                                     -fx-border-radius: 15px;
+                                                     -fx-cursor: hand;
+                                                     -fx-effect: dropshadow(gaussian, rgba(255,110,199,0.2), 10, 0, 0, 5);">
+                                            <Label text="⚡ Quick Set"
+                                                   style="-fx-text-fill: #FFFFFF; 
+                                                          -fx-font-weight: bold;
+                                                          -fx-font-size: 18px;"/>
+                                            <Label text="Log a quick set"
+                                                   style="-fx-text-fill: #E0E0E0;
+                                                          -fx-font-size: 14px;"/>
                                         </VBox>
-                                        <VBox fx:id="progressCard" spacing="8.0" style="-fx-background-color:#1f1f1f; -fx-padding: 14px; -fx-background-radius:12px;">
-                                            <Label text="📈 Progress" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
-                                            <Label text="View analytics" style="-fx-text-fill: #E0E0E0;"/>
+                                        <VBox fx:id="progressCard" spacing="10.0"
+                                              style="-fx-background-color: #2b2b2b; 
+                                                     -fx-padding: 20px; 
+                                                     -fx-background-radius: 15px;
+                                                     -fx-border-color: rgba(0,212,255,0.3);
+                                                     -fx-border-width: 2px;
+                                                     -fx-border-radius: 15px;
+                                                     -fx-cursor: hand;
+                                                     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                            <Label text="📈 Progress"
+                                                   style="-fx-text-fill: #FFFFFF; 
+                                                          -fx-font-weight: bold;
+                                                          -fx-font-size: 18px;"/>
+                                            <Label text="View analytics"
+                                                   style="-fx-text-fill: #E0E0E0;
+                                                          -fx-font-size: 14px;"/>
+                                        </VBox>
+                                        <VBox fx:id="muscleMapCard" spacing="10.0"
+                                              style="-fx-background-color: #2b2b2b; 
+                                                     -fx-padding: 20px; 
+                                                     -fx-background-radius: 15px;
+                                                     -fx-border-color: rgba(255,215,0,0.3);
+                                                     -fx-border-width: 2px;
+                                                     -fx-border-radius: 15px;
+                                                     -fx-cursor: hand;
+                                                     -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.2), 10, 0, 0, 5);">
+                                            <Label text="💪 Muscle Map"
+                                                   style="-fx-text-fill: #FFFFFF; 
+                                                          -fx-font-weight: bold;
+                                                          -fx-font-size: 18px;"/>
+                                            <Label text="Explore exercises"
+                                                   style="-fx-text-fill: #E0E0E0;
+                                                          -fx-font-size: 14px;"/>
+                                        </VBox>
+                                        <VBox fx:id="aiCard" spacing="10.0"
+                                              style="-fx-background-color: #2b2b2b; 
+                                                     -fx-padding: 20px; 
+                                                     -fx-background-radius: 15px;
+                                                     -fx-border-color: rgba(255,215,0,0.5);
+                                                     -fx-border-width: 3px;
+                                                     -fx-border-radius: 15px;
+                                                     -fx-cursor: hand;
+                                                     -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.4), 15, 0, 0, 8);">
+                                            <Label text="🤖 AI Assistant"
+                                                   style="-fx-text-fill: #FFD700; 
+                                                          -fx-font-weight: bold;
+                                                          -fx-font-size: 18px;
+                                                          -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.5), 2, 0, 0, 1);"/>
+                                            <Label text="Get AI insights"
+                                                   style="-fx-text-fill: #E0E0E0;
+                                                          -fx-font-size: 14px;"/>
                                         </VBox>
                                     </HBox>
 
-                                    <VBox spacing="12.0">
-                                        <Label text="💡 Today's Motivation" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
-                                        <Label fx:id="motivationLabel" text="Keep going!" wrapText="true" style="-fx-text-fill: #E0E0E0;"/>
+                                    <Separator />
+
+                                    <!-- Enhanced Motivation Section -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(255,215,0,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.2), 10, 0, 0, 5);">
+                                        <Label text="💡 Today's Motivation"
+                                               style="-fx-text-fill: #FFD700; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-font-size: 20px;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.3), 2, 0, 0, 1);"/>
+                                        <Label fx:id="motivationLabel"
+                                               text="Keep going!"
+                                               wrapText="true"
+                                               style="-fx-text-fill: #E0E0E0;
+                                                      -fx-font-size: 16px;
+                                                      -fx-line-spacing: 2px;"/>
                                     </VBox>
 
-                                    <VBox spacing="12.0">
-                                        <Label text="🏆 Recent Achievements" style="-fx-text-fill: #FFFFFF; -fx-font-weight:bold;"/>
-                                        <HBox fx:id="achievementsBox" spacing="10.0" />
+                                    <Separator />
+
+                                    <!-- Enhanced Recent Workouts -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="📊 Recent Workouts"
+                                               style="-fx-font-size: 22px; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-text-fill: white;
+                                                      -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 2, 0, 0, 1);" />
+                                        <VBox fx:id="recentWorkoutsBox" spacing="10.0" />
                                     </VBox>
+
+                                    <Separator />
+
+                                    <!-- Enhanced Achievements -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(255,215,0,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.2), 10, 0, 0, 5);">
+                                        <Label text="🏆 Recent Achievements"
+                                               style="-fx-text-fill: #FFD700; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-font-size: 22px;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.3), 2, 0, 0, 1);"/>
+                                        <HBox fx:id="achievementsBox" spacing="15.0" />
+                                    </VBox>
+
                                 </VBox>
                             </content>
                         </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- MUSCLE MAP TAB -->
+                <!-- ====================== MUSCLE MAP TAB ====================== -->
                 <Tab fx:id="muscleMapTab" text="💪 Muscle Map">
                     <content>
-                        <HBox spacing="20.0" style="-fx-padding: 16px; -fx-background-color: transparent;">
+                        <HBox spacing="16.0" style="-fx-padding: 16px; -fx-background-color: transparent;">
+                            <!-- Map area -->
                             <VBox spacing="8.0" prefWidth="520.0">
-                                <ScrollPane fx:id="muscleMapScrollPane" fitToWidth="true" fitToHeight="true">
+                                <ScrollPane fx:id="muscleMapScrollPane" fitToWidth="true" fitToHeight="true"
+                                            style="-fx-background: transparent; -fx-background-color: transparent;">
                                     <content>
-                                        <Pane fx:id="muscleMapPane" prefWidth="500.0" prefHeight="700.0" />
+                                        <Pane fx:id="muscleMapPane" prefWidth="650.0" prefHeight="850.0" />
                                     </content>
                                 </ScrollPane>
                             </VBox>
-                            <VBox spacing="12.0" HBox.hgrow="ALWAYS" style="-fx-padding:12px;">
-                                <Label fx:id="selectedMuscleLabel" text="Selected Muscle" style="-fx-text-fill:#00d4ff; -fx-font-weight:bold;"/>
-                                <ListView fx:id="exerciseListView" prefHeight="300.0" />
-                                <StackPane fx:id="exerciseImageContainer" prefHeight="220.0">
-                                    <ImageView fx:id="exerciseImageView" fitHeight="200.0" preserveRatio="true" />
-                                </StackPane>
-                                <TextArea fx:id="exerciseDescriptionArea" wrapText="true" prefRowCount="6" />
+
+                            <!-- Enhanced Details panel -->
+                            <VBox spacing="15.0" HBox.hgrow="ALWAYS" 
+                                  style="-fx-padding: 20px;
+                                         -fx-background-color: #2b2b2b;
+                                         -fx-background-radius: 15px;
+                                         -fx-border-color: rgba(0,212,255,0.3);
+                                         -fx-border-width: 2px;
+                                         -fx-border-radius: 15px;
+                                         -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                <Label fx:id="selectedMuscleLabel"
+                                       text="🎯 Click on a muscle group to see exercises"
+                                       wrapText="true"
+                                       style="-fx-text-fill: #00d4ff; 
+                                              -fx-font-weight: bold;
+                                              -fx-font-size: 18px;
+                                              -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 2, 0, 0, 1);"/>
+
+                                <Separator style="-fx-background-color: rgba(0,212,255,0.3);"/>
+
+                                <Label text="🏋️ Exercises for this muscle:"
+                                       style="-fx-font-size: 18px; 
+                                              -fx-font-weight: bold; 
+                                              -fx-text-fill: white;
+                                              -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 1, 0, 0, 1);" />
+                                <ListView fx:id="exerciseListView" 
+                                          prefHeight="300.0"
+                                          style="-fx-background-color: #1f1f1f;
+                                                 -fx-background-radius: 10px;
+                                                 -fx-border-color: rgba(0,212,255,0.2);
+                                                 -fx-border-width: 1px;
+                                                 -fx-border-radius: 10px;" />
+
+                                <Label text="📋 Exercise Details:"
+                                       style="-fx-font-size: 18px; 
+                                              -fx-font-weight: bold; 
+                                              -fx-text-fill: white;
+                                              -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 1, 0, 0, 1);" />
+                                
+                                <!-- Scrollable Exercise Details Container -->
+                                <ScrollPane fitToWidth="true" 
+                                           prefHeight="600.0"
+                                           style="-fx-background: transparent; 
+                                                  -fx-background-color: transparent;
+                                                  -fx-border-color: rgba(0,212,255,0.3);
+                                                  -fx-border-width: 2px;
+                                                  -fx-border-radius: 10px;">
+                                    <content>
+                                        <VBox spacing="15.0" 
+                                              style="-fx-padding: 10px;
+                                                     -fx-background-color: transparent;">
+                                            
+                                            <!-- Exercise Image Display -->
+                                            <StackPane fx:id="exerciseImageContainer" 
+                                                       prefHeight="180.0"
+                                                       maxHeight="180.0"
+                                                       style="-fx-background-color: #1f1f1f;
+                                                              -fx-background-radius: 10px;
+                                                              -fx-border-color: rgba(0,212,255,0.2);
+                                                              -fx-border-width: 1px;
+                                                              -fx-border-radius: 10px;">
+                                                <ImageView fx:id="exerciseImageView" 
+                                                           fitWidth="350.0" 
+                                                           fitHeight="170.0" 
+                                                           preserveRatio="true"
+                                                           smooth="true"
+                                                           cache="true"
+                                                           visible="true" />
+                                                <VBox fx:id="imagePlaceholder" 
+                                                      alignment="CENTER"
+                                                      style="-fx-background-color: #1f1f1f;">
+                                                    <Label text="🖼️" 
+                                                           style="-fx-font-size: 48px; -fx-text-fill: #666;" />
+                                                    <Label text="Exercise Image" 
+                                                           style="-fx-text-fill: #888; -fx-font-size: 14px;" />
+                                                </VBox>
+                                            </StackPane>
+                                            
+                                            <!-- Exercise Description Text -->
+                                            <TextArea fx:id="exerciseDescriptionArea" 
+                                                      prefHeight="300.0"
+                                                      minHeight="200.0"
+                                                      wrapText="true"
+                                                      style="-fx-background-color: #1f1f1f;
+                                                             -fx-text-fill: white;
+                                                             -fx-background-radius: 10px;
+                                                             -fx-border-color: rgba(0,212,255,0.2);
+                                                             -fx-border-width: 1px;
+                                                             -fx-border-radius: 10px;
+                                                             -fx-font-size: 14px;" />
+                                            
+                                            <!-- Step-by-Step Images Panel -->
+                                            <VBox fx:id="stepImagesPanel" 
+                                                  spacing="10.0"
+                                                  visible="false"
+                                                  managed="false"
+                                                  style="-fx-background-color: #1f1f1f;
+                                                         -fx-background-radius: 15px;
+                                                         -fx-border-color: #00d4ff;
+                                                         -fx-border-width: 2px;
+                                                         -fx-border-radius: 15px;
+                                                         -fx-padding: 15px;" />
+                                        </VBox>
+                                    </content>
+                                </ScrollPane>
                             </VBox>
                         </HBox>
                     </content>
                 </Tab>
 
-                <!-- WORKOUT TAB -->
+                <!-- ======================== WORKOUT TAB ======================= -->
                 <Tab fx:id="workoutTab" text="🏋️ Workout">
                     <content>
-                        <ScrollPane fitToWidth="true" style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
+                        <ScrollPane fitToWidth="true"
+                                    style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
                             <content>
                                 <VBox spacing="20.0" style="-fx-padding: 25px; -fx-background-color: #1a1a1a;">
 
-                                    <!-- Workout Control Section -->
-                                    <HBox spacing="15.0" alignment="CENTER_LEFT" style="-fx-background-color: #2b2b2b; -fx-padding: 20px; -fx-background-radius: 12px;">
-                                        <Label text="🎯 Select Routine:" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;" />
-                                        <ComboBox fx:id="routineSelector" prefWidth="180.0" />
+                                    <!-- Enhanced Controls -->
+                                    <HBox spacing="20.0" alignment="CENTER_LEFT"
+                                          style="-fx-background-color: #2b2b2b; 
+                                                 -fx-padding: 25px; 
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="🎯 Select Routine:"
+                                               style="-fx-text-fill: white; 
+                                                      -fx-font-size: 18px; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 1, 0, 0, 1);" />
+                                        <ComboBox fx:id="routineSelector" 
+                                                  prefWidth="220.0"
+                                                  style="-fx-background-color: #353535;
+                                                         -fx-text-fill: white;
+                                                         -fx-background-radius: 10px;
+                                                         -fx-border-color: rgba(0,212,255,0.3);
+                                                         -fx-border-width: 1px;
+                                                         -fx-border-radius: 10px;" />
                                         <Region HBox.hgrow="ALWAYS" />
-                                        <Button fx:id="startWorkoutBtn" text="▶️ Start Workout" prefWidth="140.0" onAction="#handleStartWorkout" />
-                                        <Button fx:id="endWorkoutBtn" text="⏹️ End Workout" prefWidth="140.0" onAction="#handleEndWorkout" disable="true" />
+                                        <Button fx:id="startWorkoutBtn" 
+                                                text="▶️ Start Workout" 
+                                                prefWidth="180.0"
+                                                prefHeight="45.0"
+                                                style="-fx-background-color: #00d4ff;
+                                                       -fx-text-fill: white;
+                                                       -fx-font-size: 16px;
+                                                       -fx-font-weight: bold;
+                                                       -fx-background-radius: 12px;
+                                                       -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.4), 8, 0, 0, 4);" />
+                                        <Button fx:id="endWorkoutBtn" 
+                                                text="⏹️ End Workout" 
+                                                prefWidth="180.0"
+                                                prefHeight="45.0"
+                                                disable="true"
+                                                style="-fx-background-color: #ff5555;
+                                                       -fx-text-fill: white;
+                                                       -fx-font-size: 16px;
+                                                       -fx-font-weight: bold;
+                                                       -fx-background-radius: 12px;
+                                                       -fx-effect: dropshadow(gaussian, rgba(255,85,85,0.4), 8, 0, 0, 4);" />
                                     </HBox>
 
-                                    <!-- Timer Display -->
-                                    <VBox spacing="15.0" style="-fx-background-color: #2b2b2b; -fx-padding: 20px; -fx-background-radius: 12px;">
-                                        <Label fx:id="workoutTimerLabel" text="⏱️ Timer: 00:00:00" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                                        <Label fx:id="currentWorkoutStatsLabel" text="Start a workout to begin logging!" style="-fx-font-size: 14px; -fx-text-fill: #b0b0b0;" wrapText="true" />
+                                    <!-- Enhanced Timer -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b; 
+                                                 -fx-padding: 25px; 
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(255,215,0,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.2), 10, 0, 0, 5);">
+                                        <Label fx:id="workoutTimerLabel"
+                                               text="⏱️ Ready to start your workout!"
+                                               style="-fx-font-size: 22px; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-text-fill: #FFD700;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.3), 2, 0, 0, 1);" />
                                     </VBox>
 
-                                    <!-- Exercise Input Section -->
-                                    <VBox spacing="15.0" style="-fx-background-color: #2b2b2b; -fx-padding: 20px; -fx-background-radius: 12px;">
-                                        <Label text="➕ Log Exercise Set" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" />
-
+                                    <!-- Enhanced Exercise Selection -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="🏋️ Select Exercise"
+                                               style="-fx-font-size: 22px; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-text-fill: white;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 1, 0, 0, 1);" />
+                                        <ComboBox fx:id="exerciseComboBox" 
+                                                  prefWidth="300.0"
+                                                  style="-fx-background-color: #353535;
+                                                         -fx-text-fill: white;
+                                                         -fx-background-radius: 10px;
+                                                         -fx-border-color: rgba(0,212,255,0.3);
+                                                         -fx-border-width: 1px;
+                                                         -fx-border-radius: 10px;" />
                                         <HBox spacing="15.0" alignment="CENTER_LEFT">
-                                            <Label text="Exercise:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
-                                            <ComboBox fx:id="exerciseComboBox" prefWidth="250.0" promptText="Select exercise..." />
-                                        </HBox>
-
-                                        <HBox spacing="15.0" alignment="CENTER_LEFT">
-                                            <VBox spacing="5.0">
-                                                <Label text="Weight (lbs):" style="-fx-text-fill: white; -fx-font-weight: bold;" />
-                                                <TextField fx:id="weightField" prefWidth="120.0" promptText="e.g., 135" />
-                                            </VBox>
-
-                                            <VBox spacing="5.0">
-                                                <Label text="Reps:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
-                                                <TextField fx:id="repsField" prefWidth="120.0" promptText="e.g., 10" />
-                                            </VBox>
-
-                                            <Region HBox.hgrow="ALWAYS" />
-
-                                            <Button text="✅ Log Set" onAction="#handleLogSet" prefWidth="120.0" prefHeight="40.0"
-                                                    style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px;" />
+                                            <Label text="Sets:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
+                                            <TextField fx:id="setsField" 
+                                                       prefWidth="80.0"
+                                                       promptText="3"
+                                                       style="-fx-background-color: #353535;
+                                                              -fx-text-fill: white;
+                                                              -fx-background-radius: 8px;
+                                                              -fx-border-color: rgba(0,212,255,0.3);
+                                                              -fx-border-width: 1px;
+                                                              -fx-border-radius: 8px;" />
+                                            <Label text="Reps:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
+                                            <TextField fx:id="repsField" 
+                                                       prefWidth="80.0"
+                                                       promptText="12"
+                                                       style="-fx-background-color: #353535;
+                                                              -fx-text-fill: white;
+                                                              -fx-background-radius: 8px;
+                                                              -fx-border-color: rgba(0,212,255,0.3);
+                                                              -fx-border-width: 1px;
+                                                              -fx-border-radius: 8px;" />
+                                            <Label text="Weight:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
+                                            <TextField fx:id="weightField" 
+                                                       prefWidth="80.0"
+                                                       promptText="50"
+                                                       style="-fx-background-color: #353535;
+                                                              -fx-text-fill: white;
+                                                              -fx-background-radius: 8px;
+                                                              -fx-border-color: rgba(0,212,255,0.3);
+                                                              -fx-border-width: 1px;
+                                                              -fx-border-radius: 8px;" />
+                                            <Button fx:id="addSetBtn" 
+                                                    text="➕ Add Set"
+                                                    prefWidth="120.0"
+                                                    style="-fx-background-color: #4CAF50;
+                                                           -fx-text-fill: white;
+                                                           -fx-font-weight: bold;
+                                                           -fx-background-radius: 10px;
+                                                           -fx-effect: dropshadow(gaussian, rgba(76,175,80,0.4), 8, 0, 0, 4);" />
                                         </HBox>
                                     </VBox>
 
-                                    <!-- Exercise Log Display -->
-                                    <VBox spacing="10.0">
-                                        <Label text="💪 Exercise Log" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                                        <ScrollPane fitToWidth="true" prefHeight="400.0" style="-fx-background: transparent;">
+                                    <!-- Enhanced Exercise Log Input -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="💪 Exercise Log"
+                                               style="-fx-font-size: 22px; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-text-fill: white;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 1, 0, 0, 1);" />
+                                        <ScrollPane fitToWidth="true" 
+                                                    prefHeight="400.0" 
+                                                    style="-fx-background: transparent;
+                                                           -fx-border-color: rgba(0,212,255,0.2);
+                                                           -fx-border-width: 1px;
+                                                           -fx-border-radius: 10px;">
                                             <content>
-                                                <VBox fx:id="exerciseLogBox" spacing="12.0" />
+                                                <VBox fx:id="exerciseLogBox" spacing="15.0" />
                                             </content>
                                         </ScrollPane>
                                     </VBox>
+
                                 </VBox>
                             </content>
                         </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- PROGRESS TAB -->
-                <Tab fx:id="progressTab" text="Progress">
+                <!-- ======================== PROGRESS TAB ====================== -->
+                <Tab fx:id="progressTab" text="📊 Progress">
                     <content>
-                        <ScrollPane fitToWidth="true" style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
+                        <ScrollPane fitToWidth="true"
+                                    style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a;">
                             <content>
                                 <VBox spacing="25.0" style="-fx-padding: 25px; -fx-background-color: #1a1a1a;">
 
-                                    <!-- Filter Controls -->
-                                    <HBox spacing="15.0" alignment="CENTER_LEFT"
-                                          style="-fx-background-color: #2b2b2b; -fx-padding: 20px; -fx-background-radius: 12px;">
-                                        <Label text="📊 Filter:" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;"/>
-                                        <ComboBox fx:id="exerciseFilterCombo" prefWidth="180.0"/>
+                                    <!-- Enhanced Filters -->
+                                    <HBox spacing="20.0" alignment="CENTER_LEFT"
+                                          style="-fx-background-color: #2b2b2b; 
+                                                 -fx-padding: 25px; 
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="📈 Filter:"
+                                               style="-fx-text-fill: white; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-font-size: 16px;" />
+                                        <ComboBox fx:id="exerciseFilterCombo" 
+                                                  prefWidth="200.0"
+                                                  style="-fx-background-color: #353535;
+                                                         -fx-text-fill: white;
+                                                         -fx-background-radius: 10px;
+                                                         -fx-border-color: rgba(0,212,255,0.3);
+                                                         -fx-border-width: 1px;
+                                                         -fx-border-radius: 10px;" />
 
-                                        <Label text="From:" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;"/>
-                                        <DatePicker fx:id="fromDatePicker"/>
+                                        <Label text="📅 From:" 
+                                               style="-fx-text-fill: white; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-font-size: 16px;" />
+                                        <DatePicker fx:id="fromDatePicker" 
+                                                    style="-fx-background-color: #353535;
+                                                           -fx-background-radius: 10px;
+                                                           -fx-border-color: rgba(0,212,255,0.3);
+                                                           -fx-border-width: 1px;
+                                                           -fx-border-radius: 10px;" />
 
-                                        <Label text="To:" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;"/>
-                                        <DatePicker fx:id="toDatePicker"/>
-
-                                        <Button fx:id="refreshProgressButton" text="🔄 Refresh"
-                                                onAction="#handleRefreshProgress"
-                                                style="-fx-background-color: #00d4ff; -fx-text-fill: white;
-                                       -fx-font-weight: bold; -fx-padding: 8px 16px;
-                                       -fx-background-radius: 8px; -fx-cursor: hand;"/>
+                                        <Label text="To:" 
+                                               style="-fx-text-fill: white; 
+                                                      -fx-font-weight: bold;
+                                                      -fx-font-size: 16px;" />
+                                        <DatePicker fx:id="toDatePicker"
+                                                    style="-fx-background-color: #353535;
+                                                           -fx-background-radius: 10px;
+                                                           -fx-border-color: rgba(0,212,255,0.3);
+                                                           -fx-border-width: 1px;
+                                                           -fx-border-radius: 10px;" />
                                     </HBox>
 
-                                    <!-- Overview Stats Cards Container -->
-                                    <VBox fx:id="progressStatsContainer" spacing="15.0"/>
+                                    <!-- Progress Stats Container -->
+                                    <VBox fx:id="progressStatsContainer" spacing="15.0" 
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <Label text="📊 Overview Statistics"
+                                               style="-fx-text-fill: #00d4ff; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-font-size: 20px;
+                                                      -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 2, 0, 0, 1);" />
+                                        <VBox fx:id="statsCardsContainer" spacing="15.0" />
+                                    </VBox>
 
-                                    <!-- Charts Section -->
-                                    <VBox spacing="20.0">
-                                        <Label text="📈 Progress Analytics"
-                                               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-
-                                        <!-- Volume Line Chart -->
-                                        <LineChart fx:id="volumeChart" prefHeight="300.0"
-                                                   style="-fx-background-color: #2b2b2b; -fx-border-radius: 12px;">
+                                    <!-- Volume Progress Chart -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <LineChart fx:id="volumeChart" 
+                                                   prefHeight="300.0"
+                                                   style="-fx-background-color: #1f1f1f;
+                                                          -fx-background-radius: 10px;">
                                             <xAxis>
-                                                <CategoryAxis side="BOTTOM" label="Time Period"/>
+                                                <CategoryAxis />
                                             </xAxis>
                                             <yAxis>
-                                                <NumberAxis side="LEFT" label="Volume (lbs)"/>
+                                                <NumberAxis />
                                             </yAxis>
                                         </LineChart>
+                                    </VBox>
 
-                                        <!-- Exercise Bar Chart -->
-                                        <BarChart fx:id="exerciseChart" prefHeight="300.0"
-                                                  style="-fx-background-color: #2b2b2b; -fx-border-radius: 12px;">
+                                    <!-- Exercise Volume Chart -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <BarChart fx:id="exerciseChart" 
+                                                  prefHeight="300.0"
+                                                  style="-fx-background-color: #1f1f1f;
+                                                         -fx-background-radius: 10px;">
                                             <xAxis>
-                                                <CategoryAxis side="BOTTOM" label="Exercise"/>
+                                                <CategoryAxis />
                                             </xAxis>
                                             <yAxis>
-                                                <NumberAxis side="LEFT" label="Total Volume (lbs)"/>
+                                                <NumberAxis />
                                             </yAxis>
                                         </BarChart>
+                                    </VBox>
 
-                                        <!-- Progress Area Chart -->
-                                        <AreaChart fx:id="progressChart" prefHeight="250.0"
-                                                   style="-fx-background-color: #2b2b2b; -fx-border-radius: 12px;">
+                                    <!-- Workout Frequency Chart -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(0,212,255,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                        <AreaChart fx:id="progressChart" 
+                                                   prefHeight="300.0"
+                                                   style="-fx-background-color: #1f1f1f;
+                                                          -fx-background-radius: 10px;">
                                             <xAxis>
-                                                <CategoryAxis side="BOTTOM" label="Week"/>
+                                                <CategoryAxis />
                                             </xAxis>
                                             <yAxis>
-                                                <NumberAxis side="LEFT" label="Workouts"/>
+                                                <NumberAxis />
                                             </yAxis>
                                         </AreaChart>
                                     </VBox>
 
-                                    <!-- Personal Records Section -->
-                                    <VBox spacing="15.0">
+                                    <!-- Personal Records -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(255,215,0,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.2), 10, 0, 0, 5);">
                                         <Label text="🏆 Personal Records"
-                                               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-
-                                        <VBox fx:id="personalRecordsContainer" spacing="10.0"/>
-
+                                               style="-fx-text-fill: #FFD700; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-font-size: 20px;
+                                                      -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.3), 2, 0, 0, 1);" />
                                         <TableView fx:id="prTableView" prefHeight="250.0"
-                                                   style="-fx-background-color: #2b2b2b;">
+                                                   style="-fx-background-color: #1f1f1f;
+                                                          -fx-background-radius: 10px;">
                                             <columns>
-                                                <TableColumn fx:id="exerciseColumn" text="Exercise" prefWidth="200.0"/>
-                                                <TableColumn fx:id="weightColumn" text="Max Weight" prefWidth="150.0"/>
-                                                <TableColumn fx:id="dateColumn" text="Achieved" prefWidth="150.0"/>
+                                                <TableColumn fx:id="exerciseColumn" text="Exercise" prefWidth="150.0" />
+                                                <TableColumn fx:id="weightColumn" text="Weight" prefWidth="100.0" />
+                                                <TableColumn fx:id="dateColumn" text="Date" prefWidth="120.0" />
                                             </columns>
                                         </TableView>
+                                        <VBox fx:id="personalRecordsContainer" spacing="10.0" />
                                     </VBox>
 
-                                    <!-- Consistency Stats -->
-                                    <VBox spacing="15.0">
-                                        <Label text="🔥 Consistency Tracking"
-                                               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-
-                                        <VBox fx:id="bodyMetricsContainer" spacing="15.0"/>
+                                    <!-- Body Metrics -->
+                                    <VBox spacing="15.0"
+                                          style="-fx-background-color: #2b2b2b;
+                                                 -fx-padding: 20px;
+                                                 -fx-background-radius: 15px;
+                                                 -fx-border-color: rgba(156,39,176,0.3);
+                                                 -fx-border-width: 2px;
+                                                 -fx-border-radius: 15px;
+                                                 -fx-effect: dropshadow(gaussian, rgba(156,39,176,0.2), 10, 0, 0, 5);">
+                                        <Label text="📏 Body Metrics"
+                                               style="-fx-text-fill: #9C27B0; 
+                                                      -fx-font-weight: bold; 
+                                                      -fx-font-size: 20px;
+                                                      -fx-effect: dropshadow(gaussian, rgba(156,39,176,0.3), 2, 0, 0, 1);" />
+                                        <VBox fx:id="bodyMetricsContainer" spacing="10.0" />
                                     </VBox>
+
+                                    <!-- Dynamic cards/charts container for additional content -->
+                                    <VBox fx:id="progressChartsBox" spacing="15.0" style="-fx-padding: 0;" />
 
                                 </VBox>
                             </content>
@@ -255,15 +722,42 @@
                     </content>
                 </Tab>
 
-                <!-- AI TAB -->
-                <Tab fx:id="aiTab" text="AI">
+                <!-- =========================== ENHANCED AI TAB ========================= -->
+                <Tab fx:id="aiTab" text="🤖 AI">
                     <content>
-                        <VBox fx:id="aiContentContainer" spacing="16.0" style="-fx-padding: 20px; -fx-background-color: #1a1a1a;">
-                            <!-- AI content will be injected here by MainController -->
+                        <VBox fx:id="aiContentContainer"
+                              spacing="20.0"
+                              style="-fx-padding: 25px; 
+                                     -fx-background-color: #1a1a1a;
+                                     -fx-background-radius: 15px;
+                                     -fx-border-color: rgba(0,212,255,0.2);
+                                     -fx-border-width: 2px;
+                                     -fx-border-radius: 15px;">
+                            <!-- Enhanced AI Header -->
+                            <VBox spacing="15.0"
+                                  style="-fx-background-color: #2b2b2b;
+                                         -fx-padding: 20px;
+                                         -fx-background-radius: 15px;
+                                         -fx-border-color: rgba(0,212,255,0.3);
+                                         -fx-border-width: 2px;
+                                         -fx-border-radius: 15px;
+                                         -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.2), 10, 0, 0, 5);">
+                                <Label text="🤖 AI Assistant"
+                                       style="-fx-text-fill: #00d4ff; 
+                                              -fx-font-weight: bold; 
+                                              -fx-font-size: 24px;
+                                              -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 2, 0, 0, 1);" />
+                                <Label text="Your intelligent fitness companion"
+                                       style="-fx-text-fill: #E0E0E0; 
+                                              -fx-font-size: 16px;" />
+                            </VBox>
+                            <!-- AI content will be injected by controller -->
                         </VBox>
                     </content>
                 </Tab>
+
             </tabs>
         </TabPane>
     </center>
+
 </BorderPane>

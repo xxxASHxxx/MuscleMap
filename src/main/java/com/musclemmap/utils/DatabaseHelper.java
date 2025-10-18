@@ -795,13 +795,14 @@ public class DatabaseHelper {
             ResultSet rs = stmt.executeQuery(sql);
 
             while (rs.next()) {
-                // ✅ FIXED: Use 7-parameter constructor with correct column names
+                // ✅ FIXED: Use 8-parameter constructor with correct column names
                 Exercise exercise = new Exercise(
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("musclegroup"),
-                        rs.getString("equipment"),
                         rs.getString("difficulty"),
+                        rs.getString("instructions"), // Use instructions as description
+                        rs.getString("equipment"),
                         rs.getString("instructions"),
                         rs.getString("gifurl")
                 );
@@ -864,13 +865,14 @@ public class DatabaseHelper {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                // ✅ Use 7-parameter constructor with gifurl
+                // ✅ Use 8-parameter constructor with gifurl - FIXED: use instructions as description
                 Exercise exercise = new Exercise(
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("musclegroup"),
-                        rs.getString("equipment"),
                         rs.getString("difficulty"),
+                        rs.getString("instructions"), // Use instructions as description
+                        rs.getString("equipment"),
                         rs.getString("instructions"),
                         rs.getString("gifurl")  // ✅ Correct column name
                 );
@@ -987,51 +989,136 @@ public class DatabaseHelper {
         return stats;
     }
     private void backfillGifUrlsIfMissing() {
-        final String select = "SELECT id, name, gifurl FROM exercises";
-        final String update = "UPDATE exercises SET gifurl = ? WHERE id = ?";
-        try (Statement s = connection.createStatement();
-             ResultSet rs = s.executeQuery(select);
-             PreparedStatement up = connection.prepareStatement(update)) {
-            int patched = 0;
-            while (rs.next()) {
-                String current = rs.getString("gifurl");
-                if (current != null && !current.isBlank()) continue;
-
-                String name = rs.getString("name");
-                String key = name == null ? "" : name.toLowerCase()
-                        .replace('-', ' ')
-                        .replace('_', ' ')
-                        .replaceAll("\\s+", " ")
-                        .trim();
-                if (key.equals("lat pull down")) key = "lat pulldown";
-                if (key.equals("barbell rows")) key = "barbell row";
-                if (key.equals("cable flies")) key = "cable fly";
-                if (key.equals("dumbbell flies")) key = "chest fly";
-                if (key.equals("push ups")) key = "push-ups";
-                if (key.equals("overhead triceps extension")) key = "overhead tricep extension";
-                if (key.equals("triceps pushdown")) key = "tricep pushdown";
-                if (key.equals("skull crusher")) key = "skull crushers";
-                if (key.equals("diamond push ups")) key = "diamond push-ups";
-
-                String mapped = null;
-                try {
-                    var m = com.musclemmap.models.Exercise.class
-                            .getDeclaredMethod("getExerciseImageUrl", String.class);
-                    m.setAccessible(true);
-                    mapped = (String) m.invoke(null, key);
-                } catch (Exception ignore) {}
-
-                if (mapped != null && !mapped.isBlank()) {
-                    up.setString(1, mapped);
-                    up.setInt(2, rs.getInt("id"));
-                    up.addBatch();
-                    patched++;
+        try (Statement stmt = connection.createStatement()) {
+            // Update exercises with proper GIF URLs based on exercise names
+            updateExerciseGifUrls();
+            System.out.println("✅ GIF URLs updated for exercises");
+        } catch (Exception e) {
+            System.err.println("Failed to update GIF URLs: " + e.getMessage());
+        }
+    }
+    
+    private void updateExerciseGifUrls() {
+        try {
+            // Map ALL exercise names to their GIF file paths
+            String[][] exerciseGifMappings = {
+                // CHEST (9)
+                {"Bench Press", "/images/exercises/chest/bench-press.gif"},
+                {"Incline Bench Press", "/images/exercises/chest/incline-bench-press.gif"},
+                {"Decline Bench Press", "/images/exercises/chest/decline-bench-press.gif"},
+                {"Dumbbell Press", "/images/exercises/chest/dumbbell-press.gif"},
+                {"Incline Dumbbell Press", "/images/exercises/chest/incline-dumbbell-press.gif"},
+                {"Chest Fly", "/images/exercises/chest/chest-fly.gif"},
+                {"Cable Fly", "/images/exercises/chest/cable-fly.gif"},
+                {"Push-ups", "/images/exercises/chest/push-ups.gif"},
+                {"Chest Dips", "/images/exercises/chest/chest-dips.gif"},
+                
+                // BACK (7)
+                {"Deadlifts", "/images/exercises/back/deadlifts.gif"},
+                {"Barbell Row", "/images/exercises/back/barbell-row.gif"},
+                {"Pull-ups", "/images/exercises/back/pull-ups.gif"},
+                {"Lat Pulldown", "/images/exercises/back/lat-pulldown.gif"},
+                {"Seated Cable Row", "/images/exercises/back/seated-cable-row.gif"},
+                {"T-Bar Row", "/images/exercises/back/t-bar-row.gif"},
+                {"One-Arm Dumbbell Row", "/images/exercises/back/one-arm-dumbbell-row.gif"},
+                
+                // SHOULDERS (7)
+                {"Overhead Press", "/images/exercises/shoulders/overhead-press.gif"},
+                {"Dumbbell Shoulder Press", "/images/exercises/shoulders/dumbbell-shoulder-press.gif"},
+                {"Lateral Raise", "/images/exercises/shoulders/lateral-raise.gif"},
+                {"Front Raise", "/images/exercises/shoulders/front-raise.gif"},
+                {"Rear Delt Fly", "/images/exercises/shoulders/rear-delt-fly.gif"},
+                {"Face Pull", "/images/exercises/shoulders/face-pull.gif"},
+                {"Arnold Press", "/images/exercises/shoulders/arnold-press.gif"},
+                
+                // BICEPS (6)
+                {"Bicep Curls", "/images/exercises/biceps/bicep-curls.gif"},
+                {"Barbell Curl", "/images/exercises/biceps/barbell-curl.gif"},
+                {"Hammer Curl", "/images/exercises/biceps/hammer-curl.gif"},
+                {"Preacher Curl", "/images/exercises/biceps/preacher-curl.gif"},
+                {"Cable Curl", "/images/exercises/biceps/cable-curl.gif"},
+                {"Concentration Curl", "/images/exercises/biceps/concentration-curl.gif"},
+                
+                // TRICEPS (6)
+                {"Tricep Dips", "/images/exercises/triceps/tricep-dips.gif"},
+                {"Close-Grip Bench Press", "/images/exercises/triceps/close-grip-bench-press.gif"},
+                {"Tricep Pushdown", "/images/exercises/triceps/tricep-pushdown.gif"},
+                {"Overhead Tricep Extension", "/images/exercises/triceps/overhead-tricep-extension.gif"},
+                {"Skull Crushers", "/images/exercises/triceps/skull-crushers.gif"},
+                {"Diamond Push-ups", "/images/exercises/triceps/diamond-push-ups.gif"},
+                
+                // FOREARMS (3)
+                {"Wrist Curls", "/images/exercises/forearms/wrist-curls.gif"},
+                {"Reverse Wrist Curls", "/images/exercises/forearms/reverse-wrist-curls.gif"},
+                {"Farmer's Walk", "/images/exercises/forearms/farmers-walk.gif"},
+                
+                // ABS (6)
+                {"Planks", "/images/exercises/abs/planks.gif"},
+                {"Crunches", "/images/exercises/abs/crunches.gif"},
+                {"Leg Raises", "/images/exercises/abs/leg-raises.gif"},
+                {"Russian Twists", "/images/exercises/abs/russian-twists.gif"},
+                {"Cable Crunch", "/images/exercises/abs/cable-crunch.gif"},
+                {"Hanging Knee Raise", "/images/exercises/abs/hanging-knee-raise.gif"},
+                
+                // OBLIQUES (3)
+                {"Side Plank", "/images/exercises/obliques/side-plank.gif"},
+                {"Bicycle Crunches", "/images/exercises/obliques/bicycle-crunches.gif"},
+                {"Wood Chops", "/images/exercises/obliques/wood-chops.gif"},
+                
+                // LOWER BACK (3)
+                {"Back Extensions", "/images/exercises/lower-back/back-extensions.gif"},
+                {"Good Mornings", "/images/exercises/lower-back/good-mornings.gif"},
+                {"Superman", "/images/exercises/lower-back/superman.gif"},
+                
+                // GLUTES (4)
+                {"Hip Thrusts", "/images/exercises/glutes/hip-thrusts.gif"},
+                {"Glute Bridges", "/images/exercises/glutes/glute-bridges.gif"},
+                {"Bulgarian Split Squats", "/images/exercises/glutes/bulgarian-split-squats.gif"},
+                {"Cable Kickbacks", "/images/exercises/glutes/cable-kickbacks.gif"},
+                
+                // QUADRICEPS (6)
+                {"Squats", "/images/exercises/quadriceps/squats.gif"},
+                {"Front Squats", "/images/exercises/quadriceps/front-squats.gif"},
+                {"Leg Press", "/images/exercises/quadriceps/leg-press.gif"},
+                {"Lunges", "/images/exercises/quadriceps/lunges.gif"},
+                {"Leg Extensions", "/images/exercises/quadriceps/leg-extensions.gif"},
+                {"Walking Lunges", "/images/exercises/quadriceps/walking-lunges.gif"},
+                
+                // HAMSTRINGS (4)
+                {"Romanian Deadlift", "/images/exercises/hamstrings/romanian-deadlift.gif"},
+                {"Leg Curls", "/images/exercises/hamstrings/leg-curls.gif"},
+                {"Nordic Curls", "/images/exercises/hamstrings/nordic-curls.gif"},
+                {"Stiff-Leg Deadlift", "/images/exercises/hamstrings/stiff-leg-deadlift.gif"},
+                
+                // CALVES (3)
+                {"Standing Calf Raise", "/images/exercises/calves/standing-calf-raise.gif"},
+                {"Seated Calf Raise", "/images/exercises/calves/seated-calf-raise.gif"},
+                {"Jump Rope", "/images/exercises/calves/jump-rope.gif"},
+                
+                // NECK (2)
+                {"Neck Curls", "/images/exercises/neck/neck-curls.gif"},
+                {"Neck Extensions", "/images/exercises/neck/neck-extensions.gif"}
+            };
+            
+            int updatedCount = 0;
+            for (String[] mapping : exerciseGifMappings) {
+                String exerciseName = mapping[0];
+                String gifPath = mapping[1];
+                
+                String updateSql = "UPDATE exercises SET gifurl = ? WHERE name = ?";
+                try (PreparedStatement pstmt = connection.prepareStatement(updateSql)) {
+                    pstmt.setString(1, gifPath);
+                    pstmt.setString(2, exerciseName);
+                    int rowsUpdated = pstmt.executeUpdate();
+                    if (rowsUpdated > 0) {
+                        System.out.println("✅ Updated GIF URL for: " + exerciseName);
+                        updatedCount++;
+                    }
                 }
             }
-            up.executeBatch();
-            if (patched > 0) System.out.println("🔁 Backfilled gifurl for " + patched + " exercises.");
-        } catch (Exception e) {
-            System.err.println("gifurl backfill failed: " + e.getMessage());
+            System.out.println("🎯 Successfully updated " + updatedCount + " exercise GIF URLs!");
+        } catch (SQLException e) {
+            System.err.println("Error updating exercise GIF URLs: " + e.getMessage());
         }
     }
 
@@ -1136,6 +1223,43 @@ public class DatabaseHelper {
             e.printStackTrace();
         }
         return false;
+    }
+
+    // ✅ NEW: Add method to add WorkoutSet object directly
+    public boolean addWorkoutSet(WorkoutSet workoutSet) {
+        if (workoutSet == null) {
+            System.err.println("❌ WorkoutSet is null");
+            return false;
+        }
+
+        try {
+            String sql = "INSERT INTO workoutsets (workoutid, exercisename, musclegroup, reps, weight, settype, completed) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+
+            pstmt.setInt(1, workoutSet.getId()); // Use ID as workout ID for now
+            pstmt.setString(2, workoutSet.getExercise() != null ? workoutSet.getExercise().getName() : "Unknown");
+            pstmt.setString(3, workoutSet.getExercise() != null ? workoutSet.getExercise().getMuscleGroup() : "");
+            pstmt.setInt(4, workoutSet.getReps());
+            pstmt.setDouble(5, workoutSet.getWeight());
+            pstmt.setString(6, workoutSet.getType() != null ? workoutSet.getType().toString() : "NORMAL");
+            pstmt.setBoolean(7, workoutSet.isCompleted());
+
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+
+            if (rowsAffected > 0) {
+                System.out.println("✅ Added workout set: " + (workoutSet.getExercise() != null ? workoutSet.getExercise().getName() : "Unknown") + " - " + workoutSet.getReps() + " reps @ " + workoutSet.getWeight() + " kg");
+                return true;
+            } else {
+                System.err.println("❌ Failed to add workout set");
+                return false;
+            }
+
+        } catch (SQLException e) {
+            System.err.println("❌ Error adding workout set: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
     
     /**

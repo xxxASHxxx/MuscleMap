@@ -48,6 +48,11 @@ public class ProgressController {
     public void initialize() {
         dbHelper = DatabaseHelper.getInstance();
 
+        // ✅ Style ComboBox for visibility
+        if (exerciseFilterCombo != null) {
+            com.musclemmap.utils.UIStyler.styleComboBox(exerciseFilterCombo);
+        }
+
         // Set default date range (last 3 months)
         fromDatePicker.setValue(LocalDate.now().minusMonths(3));
         toDatePicker.setValue(LocalDate.now());
@@ -590,10 +595,16 @@ public class ProgressController {
             icon.setStyle("-fx-font-size: 72px;");
 
             Label message = new Label("No workout data available for this period");
-            message.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;");
+            message.setStyle("-fx-text-fill: #FFFFFF !important; " +
+                           "-fx-font-size: 22px; " +
+                           "-fx-font-weight: bold; " +
+                           "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 0, 1);");
 
             Label suggestion = new Label("Complete some workouts to see your progress!");
-            suggestion.setStyle("-fx-text-fill: #b0b0b0; -fx-font-size: 14px;");
+            suggestion.setStyle("-fx-text-fill: #E0E0E0 !important; " +
+                              "-fx-font-size: 16px; " +
+                              "-fx-font-weight: 500; " +
+                              "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0, 0, 1);");
 
             noDataBox.getChildren().addAll(icon, message, suggestion);
             statsCardsContainer.getChildren().add(noDataBox);

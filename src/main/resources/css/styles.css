@@ -42,7 +42,7 @@
 }
 
 .tab:selected {
-    -fx-background-color: linear-gradient(to bottom, #00d4ff, #0ea5e9);
+    -fx-background-color: #00d4ff;
     -fx-text-fill: #FFFFFF;
     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.5), 12, 0, 0, 6);
 }
@@ -54,13 +54,13 @@
 }
 
 .tab:selected:hover {
-    -fx-background-color: linear-gradient(to bottom, #0ea5e9, #0284c7);
+    -fx-background-color: #0ea5e9;
     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.6), 15, 0, 0, 8);
 }
 
 /* ===== ENHANCED BUTTON STYLING ===== */
 .button {
-    -fx-background-color: linear-gradient(to bottom, #00d4ff, #0ea5e9);
+    -fx-background-color: #00d4ff;
     -fx-text-fill: #FFFFFF;
     -fx-font-size: 15px;
     -fx-font-weight: 600;
@@ -70,20 +70,24 @@
     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.3), 8, 0, 0, 4);
     -fx-border-color: transparent;
     -fx-letter-spacing: 0.3px;
+    -fx-transition: all 0.3s ease;
 }
 
+/* Enhanced button animations */
 .button:hover {
-    -fx-background-color: linear-gradient(to bottom, #0ea5e9, #0284c7);
+    -fx-background-color: #0ea5e9;
     -fx-opacity: 0.92;
     -fx-scale-x: 1.05;
     -fx-scale-y: 1.05;
     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.4), 12, 0, 0, 6);
+    -fx-transition: all 0.3s ease;
 }
 
 .button:pressed {
-    -fx-background-color: linear-gradient(to bottom, #0284c7, #0369a1);
+    -fx-background-color: #0284c7;
     -fx-scale-x: 0.98;
     -fx-scale-y: 0.98;
+    -fx-transition: all 0.1s ease;
 }
 
 .button:disabled {
@@ -95,12 +99,12 @@
 
 /* Success Button Variant */
 .button.success {
-    -fx-background-color: linear-gradient(to bottom, #10b981, #059669);
+    -fx-background-color: #10b981;
     -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.3), 8, 0, 0, 4);
 }
 
 .button.success:hover {
-    -fx-background-color: linear-gradient(to bottom, #059669, #047857);
+    -fx-background-color: #059669;
     -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.4), 12, 0, 0, 6);
 }
 
@@ -120,12 +124,12 @@
 
 /* Warning Button Variant */
 .button.warning {
-    -fx-background-color: linear-gradient(to bottom, #ff6b6b, #ef4444);
+    -fx-background-color: #ff6b6b;
     -fx-effect: dropshadow(gaussian, rgba(255,107,107,0.3), 8, 0, 0, 4);
 }
 
 .button.warning:hover {
-    -fx-background-color: linear-gradient(to bottom, #ef4444, #dc2626);
+    -fx-background-color: #ef4444;
     -fx-effect: dropshadow(gaussian, rgba(255,107,107,0.4), 12, 0, 0, 6);
 }
 
@@ -158,7 +162,7 @@
 /* ===== ENHANCED COMBO BOX STYLING ===== */
 .combo-box {
     -fx-background-color: #353535;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: #FFFFFF !important;
     -fx-border-color: rgba(255,255,255,0.2);
     -fx-border-width: 1px;
     -fx-border-radius: 8px;
@@ -167,6 +171,22 @@
     -fx-font-weight: 500;
     -fx-cursor: hand;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 2, 0, 0, 1);
+}
+
+/* ComboBox selected text visibility */
+.combo-box .list-cell {
+    -fx-text-fill: #FFFFFF !important;
+    -fx-background-color: #353535;
+}
+
+.combo-box .list-cell:selected {
+    -fx-text-fill: #FFFFFF !important;
+    -fx-background-color: #00d4ff;
+}
+
+.combo-box .list-cell:hover {
+    -fx-text-fill: #FFFFFF !important;
+    -fx-background-color: #404040;
 }
 
 .combo-box:hover {
@@ -193,12 +213,219 @@
 }
 
 .combo-box-popup .list-view {
-    -fx-background-color: #2a2a2a;
+    -fx-background-color: #1a1a1a;
     -fx-border-color: #00d4ff;
-    -fx-border-width: 1px;
-    -fx-border-radius: 8px;
-    -fx-background-radius: 8px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 6);
+    -fx-border-width: 2px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 15, 0, 0, 8);
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: #1a1a1a;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-border-color: transparent;
+    -fx-padding: 12px 16px;
+    -fx-font-size: 15px;
+    -fx-font-weight: 500;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #2a2a2a;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #00d4ff;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* ComboBox popup text content styling */
+.combo-box-popup .list-cell .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+.combo-box-popup .list-cell .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.combo-box-popup .list-cell .graphic {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* ComboBox popup cell content */
+.combo-box-popup .list-cell .cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* ComboBox popup cell text node */
+.combo-box-popup .list-cell .text-node {
+    -fx-fill: #FFFFFF !important;
+}
+
+/* Universal ComboBox text visibility fixes */
+.combo-box .list-cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.combo-box .list-cell .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+.combo-box .list-cell .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.combo-box .list-cell .graphic {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* ComboBox button text visibility */
+.combo-box .arrow-button .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ComboBox selected value text */
+.combo-box .list-cell:selected {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.combo-box .list-cell:selected .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+.combo-box .list-cell:selected .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* Workout Tab ComboBox specific styling */
+#exerciseComboBox {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-prompt-text-fill: #E0E0E0 !important;
+}
+
+#exerciseComboBox .list-cell {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-border-color: transparent !important;
+}
+
+#exerciseComboBox .list-cell:hover {
+    -fx-background-color: #404040 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseComboBox .list-cell:selected {
+    -fx-background-color: #00d4ff !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* Additional ComboBox text visibility fixes */
+#exerciseComboBox .list-cell .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+#exerciseComboBox .cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseComboBox .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+#exerciseComboBox .list-cell .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseComboBox .list-cell .graphic {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+/* Routine Selector specific styling */
+#routineSelector {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-prompt-text-fill: #E0E0E0 !important;
+}
+
+#routineSelector .list-cell {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-border-color: transparent !important;
+}
+
+#routineSelector .list-cell:hover {
+    -fx-background-color: #404040 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#routineSelector .list-cell:selected {
+    -fx-background-color: #00d4ff !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#routineSelector .list-cell .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+#routineSelector .list-cell .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#routineSelector .list-cell .graphic {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#routineSelector .cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#routineSelector .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+/* Exercise Filter Combo specific styling */
+#exerciseFilterCombo {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-prompt-text-fill: #E0E0E0 !important;
+}
+
+#exerciseFilterCombo .list-cell {
+    -fx-background-color: #353535 !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-border-color: transparent !important;
+}
+
+#exerciseFilterCombo .list-cell:hover {
+    -fx-background-color: #404040 !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .list-cell:selected {
+    -fx-background-color: #00d4ff !important;
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .list-cell .text {
+    -fx-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .list-cell .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .list-cell .graphic {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .cell {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+#exerciseFilterCombo .text {
+    -fx-fill: #FFFFFF !important;
 }
 
 /* ===== ENHANCED LIST VIEW STYLING ===== */
@@ -408,7 +635,7 @@
 }
 
 .progress-bar .bar {
-    -fx-background-color: linear-gradient(to right, #00d4ff, #10b981);
+    -fx-background-color: #00d4ff;
     -fx-background-radius: 8px;
     -fx-effect: dropshadow(gaussian, rgba(0,212,255,0.4), 6, 0, 0, 0);
 }
@@ -635,7 +862,7 @@
 }
 
 .list-view .list-cell:selected {
-    -fx-background-color: linear-gradient(to right, #00d4ff, #0099cc);
+    -fx-background-color: #00d4ff;
 }
 
 .list-view .list-cell:empty {
@@ -662,4 +889,97 @@
 
 .text-area .scroll-pane .content {
     -fx-background-color: #2b2b2b;
+}
+
+/* ===== ULTIMATE COMBOBOX TEXT VISIBILITY FIX ===== */
+/* This is the most aggressive fix for ALL ComboBoxes across the ENTIRE application */
+
+/* NUCLEAR OPTION: Force ALL text to be white in ALL ComboBox states */
+.combo-box,
+.combo-box *,
+.combo-box .list-cell,
+.combo-box .list-cell *,
+.combo-box .list-cell .text,
+.combo-box .list-cell:selected,
+.combo-box .list-cell:selected *,
+.combo-box .list-cell:selected .text,
+.combo-box-popup,
+.combo-box-popup *,
+.combo-box-popup .list-cell,
+.combo-box-popup .list-cell *,
+.combo-box-popup .list-cell .text,
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:hover *,
+.combo-box-popup .list-cell:hover .text,
+.combo-box-popup .list-cell:selected,
+.combo-box-popup .list-cell:selected *,
+.combo-box-popup .list-cell:selected .text {
+    -fx-text-fill: #FFFFFF !important;
+    -fx-fill: #FFFFFF !important;
+    -fx-color: #FFFFFF !important;
+}
+
+/* Base ComboBox styling */
+.combo-box {
+    -fx-background-color: #353535;
+    -fx-border-color: #555555;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* ComboBox button area */
+.combo-box .arrow-button {
+    -fx-background-color: #353535;
+    -fx-border-color: transparent;
+}
+
+.combo-box .arrow-button .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ComboBox list cell styling */
+.combo-box .list-cell {
+    -fx-background-color: #353535 !important;
+    -fx-padding: 8px 12px;
+    -fx-border-color: transparent;
+}
+
+.combo-box .list-cell:selected {
+    -fx-background-color: #00d4ff !important;
+}
+
+/* ComboBox popup styling */
+.combo-box-popup {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #555555;
+    -fx-border-width: 1px;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #1a1a1a;
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: #1a1a1a;
+    -fx-padding: 10px 15px;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #2a2a2a;
+}
+
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #00d4ff;
+}
+
+/* Force text visibility in all states */
+.combo-box .text,
+.combo-box .list-cell .text,
+.combo-box .list-cell:selected .text,
+.combo-box-popup .list-cell .text,
+.combo-box-popup .list-cell:hover .text,
+.combo-box-popup .list-cell:selected .text {
+    -fx-fill: #FFFFFF !important;
+    -fx-text-fill: #FFFFFF !important;
+    -fx-color: #FFFFFF !important;
 }
