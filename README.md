@@ -23,9 +23,10 @@
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="docs/images/main-interface.png" alt="Main Interface" width="45%" style="border-radius: 8px;">
-  <img src="docs/images/muscle-mapping.png" alt="Muscle Mapping" width="45%" style="border-radius: 8px;">
+  <img src="https://github.com/user-attachments/assets/2316586f-597d-4d9f-9807-c5ffe9161321" alt="Main Interface" width="45%" style="border-radius: 8px;">
+  <img src="https://github.com/user-attachments/assets/2c183e6d-7f91-4048-bfee-5169e7ff9550" alt="Muscle Mapping" width="45%" style="border-radius: 8px;">
 </div>
+
 
 *Interactive muscle mapping and comprehensive exercise library - screenshots coming soon!*
 
