@@ -1,64 +1,127 @@
-# MuscleMap 🏋️‍♂️
+<div align="center">
+  <h1>🏋️‍♂️ MuscleMap</h1>
+  <p><strong>Your Complete Fitness Companion</strong></p>
+  <p>A powerful fitness tracker combining the best of Hevy and MuscleWiki</p>
+  
+  <p>
+    <a href="#-features">Features</a> •
+    <a href="#-quick-start">Quick Start</a> •
+    <a href="#-how-to-use">Documentation</a> •
+    <a href="#-contributing">Contributing</a>
+  </p>
 
-A powerful fitness tracker and exercise library application built with JavaFX that combines the best features of popular fitness apps like Hevy and MuscleWiki. Perfect for anyone who wants to track their workouts while learning proper exercise techniques.
+  ![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)
+  ![JavaFX](https://img.shields.io/badge/JavaFX-21-blue)
+  ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)
+  ![Maven](https://img.shields.io/badge/Build-Maven-C71A36?logo=apache-maven)
+  ![License](https://img.shields.io/badge/License-MIT-green)
+  ![Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-lightgrey)
+</div>
 
-## About The Project
+---
 
-MuscleMap was born out of the need for a comprehensive fitness application that doesn't just track your workouts, but also educates you about exercises and muscle anatomy. Whether you're a beginner trying to understand which exercises target which muscles, or an experienced lifter looking for detailed workout logging, MuscleMap has you covered.
+## 📸 Screenshots
 
-### What Makes It Special
+<div align="center">
+  <img src="docs/images/main-interface.png" alt="Main Interface" width="45%" style="border-radius: 8px;">
+  <img src="docs/images/muscle-mapping.png" alt="Muscle Mapping" width="45%" style="border-radius: 8px;">
+</div>
 
-- **Interactive Muscle Mapping** - Click on muscle groups to discover targeted exercises
-- **Comprehensive Exercise Database** - Detailed exercise library with proper form instructions  
-- **Smart Workout Tracking** - Log sets, reps, and weights with an intuitive interface
-- **Progress Analytics** - Visualize your strength gains over time
-- **Offline First** - All data stored locally, no internet required
-- **Clean UI Design** - Modern JavaFX interface with smooth animations
+*Interactive muscle mapping and comprehensive exercise library - screenshots coming soon!*
 
-## Built With
+---
 
-- **Java 21** - Latest LTS version for optimal performance
-- **JavaFX 21** - Modern desktop UI framework
-- **SQLite** - Lightweight database for local storage
-- **Maven** - Dependency management and build automation
-- **Jackson** - JSON processing for data handling
+## ✨ Features
 
-## Getting Started
+| 💪 **Muscle Mapping** | 📊 **Smart Tracking** | 📈 **Progress Analytics** |
+|:---:|:---:|:---:|
+| Interactive anatomy visualization | Intuitive workout logging | Detailed strength progression |
+| Targeted exercise discovery | Sets, reps, and weights tracking | Visual charts and trends |
 
-### What You'll Need
+### 🎯 What Makes MuscleMap Special
+- **🔍 Interactive Muscle Mapping** - Click any muscle to discover targeted exercises
+- **📚 Comprehensive Exercise Database** - 500+ exercises with proper form instructions  
+- **⚡ Smart Workout Tracking** - Log workouts with an intuitive, fast interface
+- **📊 Progress Analytics** - Visualize strength gains and consistency over time
+- **💾 Offline First** - All data stored locally, works without internet
+- **🎨 Modern UI Design** - Clean JavaFX interface with smooth animations
 
-Before running MuscleMap, make sure you have:
-- Java 21 or higher installed
-- Maven 3.6+ (optional - we include Maven wrapper)
-- About 100MB of free disk space
+---
 
-### Quick Start
+## 🚀 Live Demo
 
-1. **Get the code**
+> **Try it yourself!** Download the [latest release](https://github.com/xxxASHxxx/MuscleMap/releases) or build from source
+
+### Quick Demo Flow
+1. 📥 **Download & Launch** - Get started in under 2 minutes
+2. 🔍 **Explore Muscles** - Click on the interactive body map
+3. 💪 **Log Your First Workout** - Add exercises and track your sets
+4. 📈 **View Progress** - See your strength improvements over time
+
+---
+
+## 📋 Requirements
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| Java | 21+ | LTS version recommended |
+| Maven | 3.6+ | Optional (wrapper included) |
+| RAM | 512MB+ | For smooth operation |
+| Storage | 100MB+ | Database and assets |
+| OS | Windows/macOS/Linux | Cross-platform support |
+
+---
+
+## ⚡ Quick Start
+
+### 1. Get the Code
 git clone https://github.com/xxxASHxxx/MuscleMap.git
 cd MuscleMap
 
-2. **Run the application**
-On Linux/Mac
+
+### 2. Run the Application
+**Linux/Mac:**
 ./mvnw clean javafx:run
 
-On Windows
+**Windows:**
 mvnw.cmd clean javafx:run
 
 
-3. **Start tracking!**
-- The app will create its database automatically
+### 3. Start Tracking!
+- The app creates its database automatically
 - Explore the exercise library
 - Start logging your first workout
 
-### Alternative Installation
-
-If you prefer building a standalone version:
-
+### Alternative: Standalone Build
 ./mvnw clean compile package
 java -jar target/muscle-map-app-1.0.0.jar
 
-## How To Use
+---
+
+## 🔧 Technical Architecture
+
+- **Frontend**: JavaFX 21 with FXML for modern UI components
+- **Backend**: Pure Java with service layer architecture  
+- **Database**: SQLite with optimized schema design
+- **Build System**: Maven with JavaFX plugin integration
+- **Data Format**: JSON for configuration, SQL for persistence
+
+### Database Schema
+The app uses SQLite for data persistence with tables for:
+- Exercise library and muscle group mappings
+- Workout sessions and exercise logs
+- User preferences and settings
+- Progress tracking data
+
+### Performance Features
+- Optimized for smooth 60fps animations
+- Efficient database queries with proper indexing
+- Lazy loading for large datasets
+- Minimal memory footprint
+
+---
+
+## 📖 How To Use
 
 ### First Time Setup
 The app works right out of the box. On first launch, it automatically creates the SQLite database and sets up everything you need to start tracking your fitness journey.
@@ -79,29 +142,45 @@ The app works right out of the box. On first launch, it automatically creates th
 - See strength improvements across different exercises
 - Analyze your training consistency and volume
 
-## Development Story
+---
+
+## 💡 Development Story
 
 This project started as part of my computer science coursework at SRM Institute, but it quickly became something more personal. As someone passionate about fitness and programming, I wanted to create an app that I'd actually use for my own workouts.
 
 The development process involved learning advanced JavaFX concepts, working with databases, and solving real UI/UX challenges. Every feature was built with the user experience in mind, making sure the app feels natural and intuitive.
 
-## Contributing
+---
 
-While this is primarily a personal project, I'm open to suggestions and improvements! Here's how you can contribute:
+## 🤝 Contributing
 
-### Reporting Issues
-- Found a bug? Open an issue with detailed steps to reproduce
-- Have a feature idea? Share it in the issues section
-- UI/UX feedback is always appreciated
+We welcome contributions! Here's how you can help make MuscleMap even better:
 
-### Code Contributions
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### 🐛 Found an Issue?
+- Check [existing issues](https://github.com/xxxASHxxx/MuscleMap/issues) first
+- Create a [detailed bug report](https://github.com/xxxASHxxx/MuscleMap/issues/new)
+- Include screenshots and steps to reproduce
 
-## Roadmap
+### 💡 Have an Idea?
+- Share feature requests in [discussions](https://github.com/xxxASHxxx/MuscleMap/discussions)
+- Vote on existing feature proposals
+- Help prioritize the roadmap
+
+### 🔧 Want to Code?
+Fork and clone the repository
+git clone https://github.com/your-username/MuscleMap.git
+cd MuscleMap
+
+Create a feature branch
+git checkout -b feature/amazing-improvement
+
+Make your changes and test thoroughly
+./mvnw test
+Submit a pull request
+
+---
+
+## 🗺️ Roadmap
 
 ### Coming Soon
 - [ ] Exercise video demonstrations
@@ -117,26 +196,25 @@ While this is primarily a personal project, I'm open to suggestions and improvem
 - [ ] Cloud sync capabilities
 - [ ] Exercise form analysis using AI
 
-## Technical Details
+---
 
-### Database Schema
-The app uses SQLite for data persistence with tables for:
-- Exercise library and muscle group mappings
-- Workout sessions and exercise logs
-- User preferences and settings
-- Progress tracking data
+## 📊 Project Stats
 
-### Performance
-- Optimized for smooth 60fps animations
-- Efficient database queries with proper indexing
-- Lazy loading for large datasets
-- Minimal memory footprint
+- 🏗️ **Built by**: Computer Science student passionate about fitness
+- ⭐ **Language**: Java (100% type-safe)
+- 📦 **Dependencies**: Minimal, carefully chosen libraries
+- 🎯 **Focus**: Performance, usability, and educational value
+- 🔄 **Updates**: Active development with regular feature releases
 
-## License
+---
+
+## 📄 License
 
 This project is open source and available under the MIT License. Feel free to use it for educational purposes or as inspiration for your own fitness applications.
 
-## Acknowledgments
+---
+
+## 🙏 Acknowledgments
 
 - Thanks to the JavaFX community for excellent documentation and examples
 - Inspired by the simplicity of Hevy and the educational approach of MuscleWiki
@@ -144,11 +222,16 @@ This project is open source and available under the MIT License. Feel free to us
 
 ---
 
-**Made with ❤️ and lots of coffee** ☕
-
-*"The best fitness app is the one you'll actually use."* That's the philosophy behind MuscleMap - simple, powerful, and built for real workouts.
-
----
-
-
-
+<div align="center">
+  <p><strong>Made with ❤️ and lots of coffee</strong> ☕</p>
+  <p><em>"The best fitness app is the one you'll actually use."</em></p>
+  <p>That's the philosophy behind MuscleMap - simple, powerful, and built for real workouts.</p>
+  
+  <br>
+  
+  <p>
+    <a href="https://github.com/xxxASHxxx/MuscleMap/issues">Report Bug</a> •
+    <a href="https://github.com/xxxASHxxx/MuscleMap/issues">Request Feature</a> •
+    <a href="https://github.com/xxxASHxxx">View Profile</a>
+  </p>
+</div>
